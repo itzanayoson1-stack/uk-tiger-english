@@ -1,4 +1,5 @@
-import { initializeApp, getApps } from 'firebase/app'
+// src/lib/firebase.ts
+import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
@@ -11,8 +12,16 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+// ✅ 클라이언트 사이드에서만 초기화
+const app = typeof window !== 'undefined'
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
+  : (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
 
 export const auth = getAuth(app)
 export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
+
+// ✅ Google 로그인 팝업이 차단되지 않도록 추가 설정
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+})
