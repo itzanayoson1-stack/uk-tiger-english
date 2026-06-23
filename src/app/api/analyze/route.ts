@@ -18,6 +18,35 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// ✅ JSON 파싱 안전 함수
+function safeParseJSON(raw: string): object {
+  // 1) 마크다운 코드블록 제거
+  let clean = raw
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim()
+
+  // 2) 응답이 잘렸을 경우 복구 시도
+  // 열린 중괄호 수와 닫힌 중괄호 수를 맞춤
+  const openBraces = (clean.match(/{/g) || []).length
+  const closeBraces = (clean.match(/}/g) || []).length
+  if (openBraces > closeBraces) {
+    // 마지막 완전한 키-값 쌍 이후 잘린 경우 정리
+    const lastComma = clean.lastIndexOf(',')
+    const lastBrace = clean.lastIndexOf('}')
+    if (lastComma > lastBrace) {
+      // 마지막 쉼표 이후 잘린 불완전 값 제거
+      clean = clean.substring(0, lastComma)
+    }
+    // 닫힌 중괄호 부족분 보충
+    const missing = openBraces - (clean.match(/}/g) || []).length
+    clean += '}'.repeat(missing)
+  }
+
+  return JSON.parse(clean)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -67,17 +96,27 @@ export async function POST(req: NextRequest) {
         : `다음 TOEIC Part 7 지문을 분석해주세요:\n\n${text}`,
     })
 
-    // AI 분석 실행
+    // ✅ AI 분석 실행 — max_tokens 증가
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      max_tokens: 8000,   // ✅ 4000 → 8000 으로 증가 (이미지 분석 시 응답이 길어짐)
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
     })
 
     const rawText = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
-    const clean = rawText.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
+
+    // ✅ 안전한 JSON 파싱 적용
+    let parsed: object
+    try {
+      parsed = safeParseJSON(rawText)
+    } catch (parseError) {
+      console.error('JSON 파싱 실패. 원본 응답:', rawText.substring(0, 500))
+      return NextResponse.json(
+        { error: 'AI 응답을 처리하지 못했습니다. 다시 시도해 주세요.' },
+        { status: 500 }
+      )
+    }
 
     // 분석 성공 후 사용량 업데이트 (무제한 계정은 카운트 제외)
     let usageCount = 0
@@ -91,21 +130,22 @@ export async function POST(req: NextRequest) {
 
     // 히스토리 저장
     try {
+      const p = parsed as Record<string, unknown>
       await addDoc(collection(db, 'history'), {
         uid,
         date: todayKey(),
         createdAt: new Date().toISOString(),
-        title: parsed.title || parsed.format || '지문 분석',
-        format: parsed.format || '',
-        purpose_type: parsed.purpose_type || '',
-        skeleton_summary: parsed.skeleton_summary || [],
+        title: p.title || p.format || '지문 분석',
+        format: p.format || '',
+        purpose_type: p.purpose_type || '',
+        skeleton_summary: p.skeleton_summary || [],
       })
     } catch (historyError) {
       console.error('히스토리 저장 실패:', historyError)
     }
 
     return NextResponse.json({
-      ...parsed,
+      ...(parsed as Record<string, unknown>),
       usageCount,
       isUnlimited,
     })
