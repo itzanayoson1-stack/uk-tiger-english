@@ -9,6 +9,7 @@ import HistoryPanel from '@/components/HistoryPanel'
 
 type AppState = 'upload' | 'loading' | 'results' | 'error'
 const STEPS = ['OCR 인식', 'Skeleton 추출', 'Structure 분석', 'Layer 분석', '결과 생성']
+const UNLIMITED_EMAILS = ['itzanayoson1@gmail.com']
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
@@ -19,6 +20,8 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('')
   const [stepIndex, setStepIndex] = useState(0)
   const [showHistory, setShowHistory] = useState(false)
+
+  const isUnlimited = user ? UNLIMITED_EMAILS.includes(user.email || '') : false
 
   const handleUserChange = useCallback((u: User | null, count: number) => {
     setUser(u); setUsageCount(count); setAuthReady(true)
@@ -39,7 +42,7 @@ export default function Home() {
       clearInterval(timer)
       setStepIndex(STEPS.length)
       setResult(data)
-      setUsageCount(data.usageCount)
+      if (!isUnlimited) setUsageCount(data.usageCount)
       setTimeout(() => setAppState('results'), 400)
     } catch (err) {
       clearInterval(timer)
@@ -49,21 +52,34 @@ export default function Home() {
   }
 
   const handleReset = () => { setAppState('upload'); setResult(null); setStepIndex(0) }
+  const goHome = () => { setAppState('upload'); setResult(null); setStepIndex(0); setErrorMsg('') }
 
   return (
     <div className="min-h-screen" style={{ background: '#0A1628', color: '#fff' }}>
       {/* Header */}
       <header style={{ background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '18px 36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px' }}>
-          <span style={{ color: '#FF6B35' }}>UK TIGER</span>
-          <span style={{ color: '#fff' }}> English Coach</span>
+        {/* 로고 + 홈 버튼 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            onClick={goHome}
+            title="홈으로"
+            style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '16px', transition: 'all 0.2s', flexShrink: 0 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,107,53,0.15)'; (e.currentTarget as HTMLButtonElement).style.color = '#FF6B35'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,107,53,0.3)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.6)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.12)' }}
+          >
+            <i className="ti ti-home" aria-hidden="true" />
+          </button>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px' }}>
+            <span style={{ color: '#FF6B35' }}>UK TIGER</span>
+            <span style={{ color: '#fff' }}> English Coach</span>
+          </div>
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ fontSize: '12px', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600 }}>
             <span style={{ color: '#FF6B35' }}>Read Structure,</span>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}> Not Words</span>
           </div>
-          {/* 기록 버튼 */}
           {user && (
             <button onClick={() => setShowHistory(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
               <i className="ti ti-clock-hour-3" style={{ fontSize: '15px' }} aria-hidden="true" />
@@ -109,11 +125,9 @@ export default function Home() {
                   <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px, 4.5vw, 44px)', fontWeight: 800, lineHeight: 1.2, letterSpacing: '-1.5px', marginBottom: '16px' }}>
                     글의 구조를 읽어라,<br />단어가 아니라 <span style={{ color: '#FF6B35' }}>Skeleton</span>을.
                   </h1>
-                  <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '480px' }}>
-                    TOEIC Part 7 지문을 업로드하거나 붙여넣으면 AI가 독해 구조를 분석해드립니다.
-                  </p>
+                  <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '480px' }}>TOEIC Part 7 지문을 업로드하거나 붙여넣으면 AI가 독해 구조를 분석해드립니다.</p>
                 </div>
-                <UploadSection onAnalyze={handleAnalyze} isLoading={false} usageCount={usageCount} />
+                <UploadSection onAnalyze={handleAnalyze} isLoading={false} usageCount={usageCount} isUnlimited={isUnlimited} />
               </>
             )}
 
@@ -136,7 +150,10 @@ export default function Home() {
               <div style={{ textAlign: 'center', padding: '60px 0' }}>
                 <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '15px', marginBottom: '24px', lineHeight: 1.6 }}>{errorMsg}</div>
-                <button onClick={handleReset} style={{ padding: '12px 32px', background: '#FF6B35', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>다시 시도</button>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                  <button onClick={handleReset} style={{ padding: '12px 32px', background: '#FF6B35', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>다시 시도</button>
+                  <button onClick={goHome} style={{ padding: '12px 32px', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, fontSize: '15px', cursor: 'pointer' }}>홈으로</button>
+                </div>
               </div>
             )}
 
@@ -147,7 +164,6 @@ export default function Home() {
         )}
       </main>
 
-      {/* 기록 패널 */}
       {showHistory && user && (
         <HistoryPanel uid={user.uid} onClose={() => setShowHistory(false)} />
       )}
