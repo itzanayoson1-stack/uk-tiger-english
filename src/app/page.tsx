@@ -76,13 +76,10 @@ export default function Home() {
         top: 0,
         zIndex: 50,
       }}>
-        {/* 로고 */}
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px' }}>
           <span style={{ color: '#FF6B35' }}>UK TIGER</span>
           <span style={{ color: '#fff' }}> English Coach</span>
         </div>
-
-        {/* 슬로건 + 인증 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div style={{ fontSize: '12px', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600 }}>
             <span style={{ color: '#FF6B35' }}>Read Structure,</span>
@@ -135,12 +132,20 @@ export default function Home() {
           <>
             {appState === 'upload' && (
               <>
-                {/* Hero */}
+                {/* Hero — 폰트 크기 줄여서 두 줄로 */}
                 <div style={{ marginBottom: '40px' }}>
                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
                     TOEIC Part 7 독해 구조 훈련
                   </div>
-                  <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(36px, 7vw, 64px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-2px', marginBottom: '16px' }}>
+                  <h1 style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 'clamp(28px, 4.5vw, 44px)',
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                    letterSpacing: '-1.5px',
+                    marginBottom: '16px',
+                    whiteSpace: 'nowrap',
+                  }}>
                     글의 구조를 읽어라,<br />
                     단어가 아니라 <span style={{ color: '#FF6B35' }}>Skeleton</span>을.
                   </h1>
@@ -155,7 +160,7 @@ export default function Home() {
             {appState === 'loading' && (
               <div style={{ textAlign: 'center', padding: '80px 0' }}>
                 <div style={{ fontSize: '64px', display: 'block', marginBottom: '24px' }} className="tiger-bounce">🐯</div>
-                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>RC Coach가 분석 중입니다...</div>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>분석 중입니다...</div>
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>지문의 구조와 핵심 정보를 추출하고 있어요</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
                   {STEPS.map((step, i) => (
