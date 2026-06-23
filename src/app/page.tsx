@@ -62,98 +62,110 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4]">
+    <div className="min-h-screen" style={{ background: '#0A1628', color: '#fff' }}>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#f8f7f4] border-b-2 border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <div className="font-grotesk text-lg font-extrabold text-gray-900 tracking-tight">
-            <span className="text-orange-500">UK Tiger</span> 영어 읽기 훈련소
-          </div>
-          <div className="text-xs text-gray-400 tracking-widest uppercase font-medium hidden sm:block">
-            Read Structure, Not Words
-          </div>
+      <header style={{
+        background: '#0A1628',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        padding: '18px 36px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        {/* 로고 */}
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 800, letterSpacing: '-0.5px' }}>
+          <span style={{ color: '#FF6B35' }}>UK TIGER</span>
+          <span style={{ color: '#fff' }}> English Coach</span>
         </div>
-        <AuthSection onUserChange={handleUserChange} />
+
+        {/* 슬로건 + 인증 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          <div style={{ fontSize: '12px', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600 }}>
+            <span style={{ color: '#FF6B35' }}>Read Structure,</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}> Not Words</span>
+          </div>
+          <AuthSection onUserChange={handleUserChange} />
+        </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-10">
+      <main style={{ maxWidth: '720px', margin: '0 auto', padding: '48px 24px' }}>
 
-        {/* 인증 로딩 중 */}
+        {/* 인증 로딩 */}
         {!authReady && (
-          <div className="text-center py-20 text-gray-400 text-sm">
-            <div className="w-6 h-6 border-2 border-gray-300 border-t-orange-400 rounded-full animate-spin mx-auto mb-3" />
+          <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
+            <div style={{
+              width: '24px', height: '24px',
+              border: '2px solid rgba(255,255,255,0.15)',
+              borderTop: '2px solid #FF6B35',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 12px',
+            }} />
             로딩 중...
           </div>
         )}
 
         {/* 로그인 전 */}
         {authReady && !user && (
-          <div className="text-center py-20 px-6">
-            <div className="text-7xl mb-6">🐯</div>
-            <h2 className="text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">
+          <div style={{ textAlign: 'center', padding: '60px 24px' }}>
+            <div style={{ fontSize: '72px', marginBottom: '24px' }}>🐯</div>
+            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '32px', fontWeight: 800, color: '#fff', marginBottom: '12px', letterSpacing: '-1px' }}>
               무료로 시작해보세요
             </h2>
-            <p className="text-gray-500 text-base mb-2">Google 계정으로 로그인하면</p>
-            <p className="text-orange-500 font-bold text-lg mb-10">
-              매일 3개 지문을 무료로 분석할 수 있어요!
-            </p>
-            <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-10">
-              {[
-                { icon: '🦴', label: 'Skeleton 분석' },
-                { icon: '🏗️', label: 'Structure 분석' },
-                { icon: '🧠', label: 'Layer 진단' },
-              ].map((f) => (
-                <div key={f.label} className="bg-white border-2 border-gray-100 rounded-xl p-4 text-center">
-                  <div className="text-2xl mb-2">{f.icon}</div>
-                  <div className="text-xs font-semibold text-gray-600">{f.label}</div>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '15px', marginBottom: '8px' }}>Google 계정으로 로그인하면</p>
+            <p style={{ color: '#FF6B35', fontWeight: 700, fontSize: '18px', marginBottom: '40px' }}>매일 3개 지문을 무료로 분석할 수 있어요!</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', maxWidth: '360px', margin: '0 auto 16px' }}>
+              {[{ icon: '🦴', label: 'Skeleton 분석' }, { icon: '🏗️', label: 'Structure 분석' }, { icon: '🧠', label: 'Layer 진단' }].map(f => (
+                <div key={f.label} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '16px 10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>{f.icon}</div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>{f.label}</div>
                 </div>
               ))}
             </div>
-            <p className="text-sm text-gray-400">우측 상단 버튼으로 Google 로그인 해주세요</p>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>우측 상단 버튼으로 Google 로그인 해주세요</p>
           </div>
         )}
 
         {/* 로그인 후 */}
         {authReady && user && (
           <>
-            {/* Hero — 업로드 화면에서만 표시 */}
             {appState === 'upload' && (
-              <div className="mb-8 relative overflow-hidden">
-                <div className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-3">
-                  TOEIC Part 7 독해 구조 훈련
+              <>
+                {/* Hero */}
+                <div style={{ marginBottom: '40px' }}>
+                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
+                    TOEIC Part 7 독해 구조 훈련
+                  </div>
+                  <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(36px, 7vw, 64px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-2px', marginBottom: '16px' }}>
+                    글의 구조를 읽어라,<br />
+                    단어가 아니라 <span style={{ color: '#FF6B35' }}>Skeleton</span>을.
+                  </h1>
+                  <p style={{ fontSize: '15px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, maxWidth: '480px' }}>
+                    TOEIC Part 7 지문을 업로드하거나 붙여넣으면 AI가 독해 구조를 분석해드립니다.
+                  </p>
                 </div>
-                <h1 className="font-grotesk text-5xl sm:text-6xl font-extrabold leading-none tracking-tight text-gray-900 mb-4">
-                  Read<br />
-                  <span className="text-orange-500">Structure,</span><br />
-                  Not Words.
-                </h1>
-                <p className="text-gray-500 text-sm leading-relaxed max-w-md">
-                  지문을 업로드하면 AI가 Skeleton → Structure → Detail 순서로 독해 구조를 분석해드립니다.
-                </p>
-                {/* 장식 도형 */}
-                <div className="absolute right-0 top-0 w-16 h-16 bg-orange-400 rounded-full opacity-70 hidden sm:block" />
-                <div className="absolute right-20 top-8 w-10 h-10 bg-yellow-300 rounded-lg rotate-12 opacity-70 hidden sm:block" />
-                <div className="absolute right-4 top-20 w-6 h-6 bg-green-400 rounded-full opacity-70 hidden sm:block" />
-              </div>
-            )}
-
-            {appState === 'upload' && (
-              <UploadSection onAnalyze={handleAnalyze} isLoading={false} usageCount={usageCount} />
+                <UploadSection onAnalyze={handleAnalyze} isLoading={false} usageCount={usageCount} />
+              </>
             )}
 
             {appState === 'loading' && (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-6 tiger-bounce inline-block">🐯</div>
-                <div className="text-xl font-bold text-gray-900 mb-2">RC Coach가 분석 중입니다...</div>
-                <div className="text-sm text-gray-400 mb-8">지문의 구조와 핵심 정보를 추출하고 있어요</div>
-                <div className="flex flex-wrap justify-center gap-2">
+              <div style={{ textAlign: 'center', padding: '80px 0' }}>
+                <div style={{ fontSize: '64px', display: 'block', marginBottom: '24px' }} className="tiger-bounce">🐯</div>
+                <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>RC Coach가 분석 중입니다...</div>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>지문의 구조와 핵심 정보를 추출하고 있어요</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
                   {STEPS.map((step, i) => (
-                    <div key={step} className={`px-4 py-1.5 rounded-full text-xs font-semibold border-2 transition-all duration-300 ${
-                      i < stepIndex ? 'bg-green-50 border-green-300 text-green-600'
-                      : i === stepIndex ? 'bg-orange-50 border-orange-300 text-orange-600'
-                      : 'bg-white border-gray-200 text-gray-300'
-                    }`}>
+                    <div key={step} style={{
+                      padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 500,
+                      background: i < stepIndex ? 'rgba(74,222,128,0.1)' : i === stepIndex ? 'rgba(255,107,53,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: `1px solid ${i < stepIndex ? 'rgba(74,222,128,0.3)' : i === stepIndex ? 'rgba(255,107,53,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                      color: i < stepIndex ? '#4ade80' : i === stepIndex ? '#FF6B35' : 'rgba(255,255,255,0.25)',
+                      transition: 'all 0.3s',
+                    }}>
                       {i < stepIndex ? '✓ ' : ''}{step}
                     </div>
                   ))}
@@ -162,10 +174,10 @@ export default function Home() {
             )}
 
             {appState === 'error' && (
-              <div className="text-center py-16">
-                <div className="text-5xl mb-4">⚠️</div>
-                <div className="text-gray-600 mb-6 leading-relaxed">{errorMsg}</div>
-                <button onClick={handleReset} className="px-8 py-3 bg-gray-900 hover:bg-orange-500 text-white font-bold rounded-xl transition-colors">
+              <div style={{ textAlign: 'center', padding: '60px 0' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '15px', marginBottom: '24px', lineHeight: 1.6 }}>{errorMsg}</div>
+                <button onClick={handleReset} style={{ padding: '12px 32px', background: '#FF6B35', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>
                   다시 시도
                 </button>
               </div>
@@ -176,7 +188,6 @@ export default function Home() {
             )}
           </>
         )}
-
       </main>
     </div>
   )

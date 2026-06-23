@@ -55,8 +55,8 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount }: Prop
         <div className={`text-5xl mb-3 transition-colors ${isDragOver ? 'text-orange-400' : 'text-gray-300'}`}>
           <i className="ti ti-file-text" aria-hidden="true" />
         </div>
-        <div className="font-grotesk text-lg font-bold text-gray-900 mb-1">TOEIC Part 7 지문을 올리세요</div>
-        <div className="text-sm text-gray-400 mb-4">이미지를 드래그하거나 클릭해서 업로드</div>
+        <div className="font-grotesk text-lg font-bold text-gray-900 mb-1">Part 7 지문과 문제를 올리세요</div>
+        <div className="text-sm text-gray-400 mb-4">지문 + 문제 사진을 드래그하거나 클릭해서 업로드</div>
         <div className="flex gap-2 justify-center">
           {['JPG', 'PNG', 'PDF'].map(e => (
             <span key={e} className="px-3 py-1 rounded-full text-xs border-2 border-gray-200 text-gray-400 font-semibold bg-gray-50">{e}</span>

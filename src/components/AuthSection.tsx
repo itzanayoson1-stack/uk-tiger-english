@@ -17,16 +17,35 @@ export default function AuthSection({ onUserChange }: Props) {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
       if (u) {
-        const res = await fetch(`/api/usage?uid=${u.uid}`)
-        const data = await res.json()
-        setUsageCount(data.count)
-        onUserChange(u, data.count)
+        try {
+          const res = await fetch(`/api/usage?uid=${u.uid}`)
+          const data = await res.json()
+          setUsageCount(data.count || 0)
+          onUserChange(u, data.count || 0)
+        } catch {
+          onUserChange(u, 0)
+        }
       } else {
         onUserChange(null, 0)
       }
       setLoading(false)
+    }, (error) => {
+      // Firebase 오류 발생시에도 로딩 해제
+      console.error('Auth error:', error)
+      onUserChange(null, 0)
+      setLoading(false)
     })
-    return () => unsub()
+    
+    // 5초 타임아웃 — Firebase 응답 없을 때 강제 해제
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      onUserChange(null, 0)
+    }, 5000)
+
+    return () => {
+      unsub()
+      clearTimeout(timeout)
+    }
   }, [])
 
   const login = async () => {
@@ -45,8 +64,14 @@ export default function AuthSection({ onUserChange }: Props) {
   }
 
   if (loading) return (
-    <div className="flex items-center gap-3 text-sm text-gray-400">
-      <div className="w-4 h-4 border-2 border-gray-300 border-t-orange-400 rounded-full animate-spin" />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+      <div style={{
+        width: '16px', height: '16px',
+        border: '2px solid rgba(255,255,255,0.15)',
+        borderTop: '2px solid #FF6B35',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
       로딩 중...
     </div>
   )
@@ -54,9 +79,19 @@ export default function AuthSection({ onUserChange }: Props) {
   if (!user) return (
     <button
       onClick={login}
-      className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:border-orange-400 hover:text-orange-500 transition-all"
+      style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '8px 16px',
+        background: '#fff',
+        border: 'none',
+        borderRadius: '10px',
+        fontSize: '13px',
+        fontWeight: 600,
+        color: '#333',
+        cursor: 'pointer',
+      }}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
         <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -69,33 +104,39 @@ export default function AuthSection({ onUserChange }: Props) {
   const remaining = Math.max(0, 3 - usageCount)
 
   return (
-    <div className="flex items-center gap-3">
-      {/* 사용량 표시 */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-xl">
-        <span className="text-xs font-semibold text-orange-600">오늘 남은 횟수</span>
-        <div className="flex gap-1">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={`w-2.5 h-2.5 rounded-full ${i < remaining ? 'bg-orange-400' : 'bg-gray-200'}`}
-            />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* 사용량 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '6px 12px',
+        background: 'rgba(255,107,53,0.12)',
+        border: '1px solid rgba(255,107,53,0.25)',
+        borderRadius: '10px',
+      }}>
+        <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35' }}>오늘 남은 횟수</span>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              width: '8px', height: '8px', borderRadius: '50%',
+              background: i < remaining ? '#FF6B35' : 'rgba(255,255,255,0.15)',
+            }} />
           ))}
         </div>
-        <span className="text-xs font-bold text-orange-600">{remaining}/3</span>
+        <span style={{ fontSize: '11px', fontWeight: 700, color: '#FF6B35' }}>{remaining}/3</span>
       </div>
 
-      {/* 유저 정보 */}
-      <div className="flex items-center gap-2">
+      {/* 유저 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {user.photoURL && (
-          <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full border-2 border-gray-200" />
+          <img src={user.photoURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />
         )}
-        <span className="text-sm font-medium text-gray-700 hidden sm:block">
+        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
           {user.displayName?.split(' ')[0]}님
         </span>
-        <button
-          onClick={logout}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100"
-        >
+        <button onClick={logout} style={{
+          fontSize: '12px', color: 'rgba(255,255,255,0.35)',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
+        }}>
           로그아웃
         </button>
       </div>
