@@ -1,3 +1,4 @@
+// src/app/api/analyze/route.ts
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/prompt'
@@ -9,42 +10,60 @@ export const maxDuration = 60
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_DAILY = 3
 
-// 무제한 이용 계정 목록
-const UNLIMITED_EMAILS = [
-  'itzanayoson1@gmail.com',
-]
+const UNLIMITED_EMAILS = ['itzanayoson1@gmail.com']
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// ✅ JSON 파싱 안전 함수
+// ✅ 근본적으로 개선된 JSON 파싱 함수
 function safeParseJSON(raw: string): object {
-  // 1) 마크다운 코드블록 제거
+  // 1단계: 마크다운 코드블록 제거
   let clean = raw
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim()
 
-  // 2) 응답이 잘렸을 경우 복구 시도
-  // 열린 중괄호 수와 닫힌 중괄호 수를 맞춤
-  const openBraces = (clean.match(/{/g) || []).length
-  const closeBraces = (clean.match(/}/g) || []).length
-  if (openBraces > closeBraces) {
-    // 마지막 완전한 키-값 쌍 이후 잘린 경우 정리
-    const lastComma = clean.lastIndexOf(',')
-    const lastBrace = clean.lastIndexOf('}')
-    if (lastComma > lastBrace) {
-      // 마지막 쉼표 이후 잘린 불완전 값 제거
-      clean = clean.substring(0, lastComma)
-    }
-    // 닫힌 중괄호 부족분 보충
-    const missing = openBraces - (clean.match(/}/g) || []).length
-    clean += '}'.repeat(missing)
-  }
+  // 2단계: 바로 파싱 시도 (정상 케이스)
+  try {
+    return JSON.parse(clean)
+  } catch {
+    // 3단계: skeleton_html 필드의 큰따옴표 문제 수정
+    // skeleton_html 값 안의 HTML 속성 따옴표를 이스케이프 처리
+    clean = clean.replace(
+      /"skeleton_html"\s*:\s*"([\s\S]*?)(?<!\\)",/,
+      (_match, content) => {
+        const fixed = content
+          .replace(/\\"/g, "'")      // 이미 이스케이프된 따옴표 → 작은따옴표
+          .replace(/"/g, "'")        // 남은 따옴표 → 작은따옴표
+        return `"skeleton_html": "${fixed}",`
+      }
+    )
 
-  return JSON.parse(clean)
+    // 4단계: 재파싱 시도
+    try {
+      return JSON.parse(clean)
+    } catch {
+      // 5단계: JSON 끝이 잘린 경우 복구
+      const firstBrace = clean.indexOf('{')
+      const lastBrace = clean.lastIndexOf('}')
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        const trimmed = clean.substring(firstBrace, lastBrace + 1)
+        try {
+          return JSON.parse(trimmed)
+        } catch {
+          // 6단계: 불완전한 마지막 필드 제거 후 닫기
+          const lastComma = trimmed.lastIndexOf(',')
+          if (lastComma !== -1) {
+            const recovered = trimmed.substring(0, lastComma) + '}'
+            return JSON.parse(recovered)
+          }
+        }
+      }
+      throw new Error('JSON 복구 실패')
+    }
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -56,14 +75,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Google 로그인이 필요합니다.' }, { status: 401 })
     }
 
-    // 무제한 계정 여부 확인
     const isUnlimited = UNLIMITED_EMAILS.includes(userEmail || '')
 
     if (!isUnlimited) {
       const ref = doc(db, 'usage', `${uid}_${todayKey()}`)
       const snap = await getDoc(ref)
       const currentCount = snap.exists() ? (snap.data().count as number) : 0
-
       if (currentCount >= MAX_DAILY) {
         return NextResponse.json(
           { error: `오늘 무료 분석 횟수(${MAX_DAILY}회)를 모두 사용했습니다. 내일 다시 이용해주세요.` },
@@ -96,29 +113,26 @@ export async function POST(req: NextRequest) {
         : `다음 TOEIC Part 7 지문을 분석해주세요:\n\n${text}`,
     })
 
-    // ✅ AI 분석 실행 — max_tokens 증가
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8000,   // ✅ 4000 → 8000 으로 증가 (이미지 분석 시 응답이 길어짐)
+      max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userContent }],
     })
 
     const rawText = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
 
-    // ✅ 안전한 JSON 파싱 적용
     let parsed: object
     try {
       parsed = safeParseJSON(rawText)
     } catch (parseError) {
-      console.error('JSON 파싱 실패. 원본 응답:', rawText.substring(0, 500))
+      console.error('JSON 파싱 최종 실패. 원본 응답 앞부분:', rawText.substring(0, 300))
       return NextResponse.json(
-        { error: 'AI 응답을 처리하지 못했습니다. 다시 시도해 주세요.' },
+        { error: '분석 중 오류가 발생했습니다. 다시 시도해 주세요.' },
         { status: 500 }
       )
     }
 
-    // 분석 성공 후 사용량 업데이트 (무제한 계정은 카운트 제외)
     let usageCount = 0
     if (!isUnlimited) {
       const ref = doc(db, 'usage', `${uid}_${todayKey()}`)
@@ -128,7 +142,6 @@ export async function POST(req: NextRequest) {
       usageCount = currentCount + 1
     }
 
-    // 히스토리 저장
     try {
       const p = parsed as Record<string, unknown>
       await addDoc(collection(db, 'history'), {
