@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface AnalysisResult {
   format: string; format_icon: string
@@ -11,16 +11,16 @@ interface AnalysisResult {
   skeleton_summary: string[]
   questions: { num: string; layer: string; desc: string }[]
   detail_analysis: string; trap_analysis: string; paraphrase: string; intent: string; sentence_structure: string
-  diagnosis: { skeleton: string; structure: string; detail: string }
   usageCount: number
+  title?: string
 }
 
 interface Props { result: AnalysisResult; onReset: () => void }
 
 const LAYER_STYLE: Record<string, string> = {
-  Skeleton: 'bg-red-50 text-red-600 border border-red-200',
-  Structure: 'bg-orange-50 text-orange-600 border border-orange-200',
-  Detail: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
+  Skeleton: 'background:rgba(230,57,70,0.15);color:#FF6B7A;border:1px solid rgba(230,57,70,0.25)',
+  Structure: 'background:rgba(255,107,53,0.15);color:#FF9162;border:1px solid rgba(255,107,53,0.25)',
+  Detail: 'background:rgba(250,204,21,0.12);color:#facc15;border:1px solid rgba(250,204,21,0.25)',
 }
 
 function Card({ label, title, iconCls, iconBg, defaultOpen = true, children, delay = 0 }: {
@@ -29,18 +29,18 @@ function Card({ label, title, iconCls, iconBg, defaultOpen = true, children, del
 }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-white border-2 border-gray-100 rounded-2xl overflow-hidden card-anim hover:border-gray-200 transition-colors" style={{ animationDelay: `${delay}ms` }}>
-      <div className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setOpen(!open)}>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${iconBg}`}>
+    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '14px', overflow: 'hidden', animationDelay: `${delay}ms` }} className="card-anim">
+      <div onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', cursor: 'pointer' }}>
+        <div style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', flexShrink: 0, ...Object.fromEntries(iconBg.split(';').filter(Boolean).map(s => { const [k,v]=s.split(':'); return [k.trim(), v?.trim()] })) }}>
           <i className={`ti ${iconCls}`} aria-hidden="true" />
         </div>
-        <div className="flex-1">
-          <div className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-0.5">{label}</div>
-          <div className="font-grotesk text-sm font-bold text-gray-900">{title}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1.5px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>{label}</div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>{title}</div>
         </div>
-        <i className={`ti ti-chevron-down text-gray-300 text-lg transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <i className={`ti ti-chevron-down`} style={{ color: 'rgba(255,255,255,0.22)', fontSize: '18px', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }} aria-hidden="true" />
       </div>
-      {open && <div className="px-5 pb-5 border-t-2 border-gray-50">{children}</div>}
+      {open && <div style={{ padding: '4px 20px 20px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>{children}</div>}
     </div>
   )
 }
@@ -48,138 +48,176 @@ function Card({ label, title, iconCls, iconBg, defaultOpen = true, children, del
 function ExpandItem({ title, content }: { title: string; content: string }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="border-2 border-gray-100 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', fontSize: '13px', fontWeight: 500, color: 'rgba(255,255,255,0.6)', background: 'none', border: 'none', cursor: 'pointer' }}>
         <span>{title}</span>
-        <i className={`ti ti-chevron-down text-gray-400 text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <i className={`ti ti-chevron-down`} style={{ fontSize: '13px', transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0)' }} aria-hidden="true" />
       </button>
-      {open && <div className="px-4 pb-4 pt-1 border-t-2 border-gray-50 text-sm text-gray-600 leading-relaxed">{content}</div>}
+      {open && <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.75 }}>{content}</div>}
     </div>
   )
 }
 
 export default function ResultsSection({ result, onReset }: Props) {
   const remaining = Math.max(0, 3 - result.usageCount)
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const handlePDF = () => {
+    window.print()
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-7 pb-4 border-b-2 border-gray-100">
-        <div>
-          <div className="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1">분석 완료</div>
-          <div className="font-grotesk text-xl font-extrabold text-gray-900">📊 독해 구조 분석 결과</div>
+    <>
+      {/* PDF용 인쇄 스타일 */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #print-area, #print-area * { visibility: visible; }
+          #print-area { position: fixed; left: 0; top: 0; width: 100%; background: #fff !important; color: #111 !important; padding: 20px; }
+          .no-print { display: none !important; }
+          .sk-strong { color: #dc2626 !important; background: #fef2f2 !important; padding: 1px 4px; border-radius: 3px; font-weight: 700; }
+          .sk-medium { color: #ea580c !important; background: #fff7ed !important; padding: 1px 4px; border-radius: 3px; font-weight: 600; }
+          .sk-weak { color: #6b7280 !important; background: #f3f4f6 !important; padding: 1px 4px; border-radius: 3px; }
+        }
+      `}</style>
+
+      <div id="print-area" ref={printRef}>
+        {/* 헤더 */}
+        <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.28)', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: '4px' }}>분석 완료</div>
+            <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 700, color: '#fff' }}>📊 독해 구조 분석 결과</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* PDF 저장 버튼 */}
+            <button onClick={handlePDF} style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '10px',
+              background: 'rgba(255,107,53,0.12)', border: '1px solid rgba(255,107,53,0.3)',
+              color: '#FF6B35', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}>
+              <i className="ti ti-file-type-pdf" style={{ fontSize: '16px' }} aria-hidden="true" />
+              PDF 저장
+            </button>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)' }}>남은 횟수 <span style={{ color: '#FF6B35', fontWeight: 700 }}>{remaining}/3</span></div>
+            <button onClick={onReset} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.14)', background: 'transparent', color: 'rgba(255,255,255,0.55)', fontSize: '13px', cursor: 'pointer' }}>
+              <i className="ti ti-refresh align-middle" aria-hidden="true" /> 새 지문
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-xs text-gray-400 font-medium">오늘 남은 횟수 <span className="text-orange-500 font-bold">{remaining}/3</span></div>
-          <button onClick={onReset} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-semibold hover:border-gray-400 hover:text-gray-800 transition-all">
-            <i className="ti ti-refresh align-middle" aria-hidden="true" /> 새 지문
-          </button>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-3">
-        <Card label="Card 1" title="지문 형식 (Format)" iconCls="ti-file-description" iconBg="bg-blue-50 text-blue-500" delay={0}>
-          <div className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border-2 border-blue-100 text-blue-700 font-grotesk text-base font-bold">
-            <i className={`ti ti-${result.format_icon || 'file'}`} aria-hidden="true" /> {result.format}
-          </div>
-        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-        <Card label="Card 2" title="지문 목적 유형 (Purpose)" iconCls="ti-target" iconBg="bg-orange-50 text-orange-500" delay={50}>
-          <div className="mt-3 p-4 rounded-xl bg-orange-50 border-2 border-orange-100">
-            <div className="font-grotesk text-sm font-bold text-orange-700 mb-1">{result.purpose_emoji} {result.purpose_type}</div>
-            <div className="text-sm text-orange-600">{result.purpose_desc}</div>
-          </div>
-        </Card>
-
-        <Card label="Card 3" title="고득점자 읽기 포인트" iconCls="ti-award" iconBg="bg-purple-50 text-purple-500" delay={100}>
-          <div className="mt-3 flex flex-col divide-y divide-gray-50">
-            {result.reading_points.map((p, i) => (
-              <div key={i} className="flex items-start gap-3 py-3">
-                <div className="w-6 h-6 rounded-full bg-purple-50 text-purple-600 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</div>
-                <div>
-                  <div className="text-sm text-gray-800 font-medium">{p.ko}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">{p.en}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card label="Card 4" title="Skeleton Mode" iconCls="ti-eye" iconBg="bg-red-50 text-red-500" delay={150}>
-          <div className="mt-3">
-            <div className="flex items-center gap-2 mb-3 text-xs text-gray-400 uppercase tracking-wider font-semibold">
-              <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-md border border-red-200 font-bold">RED</span>
-              = 주어 · 동사 · 목적어 · 보어
+          {/* Card 1: Format */}
+          <Card label="Card 1" title="지문 형식 (Format)" iconCls="ti-file-description" iconBg="background:rgba(100,149,237,0.15);color:#93c5fd" delay={0}>
+            <div style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '10px', background: 'rgba(100,149,237,0.1)', border: '1px solid rgba(100,149,237,0.2)', color: '#93c5fd', fontFamily: "'Space Grotesk', sans-serif", fontSize: '17px', fontWeight: 700 }}>
+              <i className={`ti ti-${result.format_icon || 'file'}`} aria-hidden="true" /> {result.format}
             </div>
-            <div className="text-sm leading-9 text-gray-500" dangerouslySetInnerHTML={{ __html: result.skeleton_html }} />
-          </div>
-        </Card>
+          </Card>
 
-        <Card label="Card 5" title="Structure Mode (전개)" iconCls="ti-sitemap" iconBg="bg-orange-50 text-orange-500" delay={200}>
-          <div className="mt-3">
-            {result.structure_steps.map((s, i) => (
-              <div key={i}>
-                <div className="px-4 py-3 rounded-xl bg-orange-50 border-l-4 border-orange-400">
-                  <div className="text-sm font-semibold text-gray-800">{s.ko}</div>
-                  <div className="text-xs text-orange-500 mt-0.5 font-medium">{s.en}</div>
-                </div>
-                {i < result.structure_steps.length - 1 && (
-                  <div className="text-center text-orange-300 text-xl my-1">↓</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
+          {/* Card 2: Purpose */}
+          <Card label="Card 2" title="지문 목적 유형 (Purpose)" iconCls="ti-target" iconBg="background:rgba(255,107,53,0.12);color:#FB923C" delay={50}>
+            <div style={{ marginTop: '12px', padding: '14px 16px', borderRadius: '10px', background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)' }}>
+              <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: 600, color: '#FF9162', marginBottom: '4px' }}>{result.purpose_emoji} {result.purpose_type}</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>{result.purpose_desc}</div>
+            </div>
+          </Card>
 
-        <Card label="Card 6" title="Skeleton Summary" iconCls="ti-list-check" iconBg="bg-green-50 text-green-500" delay={250}>
-          <div className="mt-3 flex flex-col gap-2.5">
-            {result.skeleton_summary.map((s, i) => (
-              <div key={i} className="flex items-start gap-2.5 text-sm text-gray-700 font-medium">
-                <div className="w-2 h-2 rounded-full bg-green-400 mt-1.5 flex-shrink-0" />
-                {s}
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card label="Card 7" title="문제 Layer 분석" iconCls="ti-layers-subtract" iconBg="bg-yellow-50 text-yellow-600" delay={300}>
-          <div className="mt-3 flex flex-col gap-2">
-            {result.questions.map((q) => (
-              <div key={q.num} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border-2 border-gray-100">
-                <span className="font-grotesk text-sm font-bold text-gray-400 w-8">{q.num}</span>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${LAYER_STYLE[q.layer] || ''}`}>🧠 {q.layer}</span>
-                <span className="text-xs text-gray-400 flex-1">{q.desc}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card label="추가 분석" title="Detail 심층 분석 (클릭하여 열기)" iconCls="ti-zoom-in" iconBg="bg-sky-50 text-sky-500" defaultOpen={false} delay={350}>
-          <div className="mt-3 flex flex-col gap-2">
-            <ExpandItem title="세부 정보 분석" content={result.detail_analysis} />
-            <ExpandItem title="함정 분석" content={result.trap_analysis} />
-            <ExpandItem title="패러프레이징 분석" content={result.paraphrase} />
-            <ExpandItem title="출제 의도 분석" content={result.intent} />
-            <ExpandItem title="문장 구조 분석" content={result.sentence_structure} />
-          </div>
-        </Card>
-
-        <Card label="학습 진단" title="Layer 역량 진단" iconCls="ti-stethoscope" iconBg="bg-pink-50 text-pink-500" delay={400}>
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            {(['skeleton', 'structure', 'detail'] as const).map((key) => {
-              const s = result.diagnosis[key]
-              return (
-                <div key={key} className={`rounded-xl p-4 text-center border-2 ${s === 'strong' ? 'bg-green-50 border-green-200' : s === 'weak' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
-                  <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-2">{key}</div>
-                  <div className="text-2xl mb-2">{s === 'strong' ? '✅' : s === 'weak' ? '❌' : '⚪'}</div>
-                  <div className={`text-xs font-bold ${s === 'strong' ? 'text-green-600' : s === 'weak' ? 'text-red-600' : 'text-gray-400'}`}>
-                    {s === 'strong' ? '✓ 강함' : s === 'weak' ? '✗ 부족' : '— 보통'}
+          {/* Card 3: Reading Points */}
+          <Card label="Card 3" title="고득점자 읽기 포인트" iconCls="ti-award" iconBg="background:rgba(168,85,247,0.12);color:#C084FC" delay={100}>
+            <div style={{ marginTop: '12px' }}>
+              {result.reading_points.map((p, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '11px 0', borderBottom: i < result.reading_points.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(168,85,247,0.15)', color: '#C084FC', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{i + 1}</div>
+                  <div>
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>{p.ko}</div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{p.en}</div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+
+          {/* Card 4: Skeleton Mode — 3단계 색상 */}
+          <Card label="Card 4" title="Skeleton Mode" iconCls="ti-eye" iconBg="background:rgba(230,57,70,0.14);color:#FF6B7A" delay={150}>
+            <div style={{ marginTop: '12px' }}>
+              {/* 범례 */}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ background: 'rgba(220,38,38,0.15)', color: '#FF4D5A', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>강</span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>주어·동사</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ background: 'rgba(234,88,12,0.15)', color: '#FB923C', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>중</span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>목적어·보어</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>약</span>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>나머지</span>
+                </div>
+              </div>
+              <style>{`
+                .sk-strong { color: #FF4D5A; font-weight: 700; font-size: 15px; background: rgba(220,38,38,0.15); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.3px; }
+                .sk-medium { color: #FB923C; font-weight: 600; background: rgba(234,88,12,0.12); padding: 2px 5px; border-radius: 4px; }
+                .sk-weak { color: rgba(255,255,255,0.38); background: rgba(255,255,255,0.06); padding: 2px 4px; border-radius: 3px; }
+              `}</style>
+              <div style={{ fontSize: '14px', lineHeight: 2.4 }} dangerouslySetInnerHTML={{ __html: result.skeleton_html }} />
+            </div>
+          </Card>
+
+          {/* Card 5: Structure */}
+          <Card label="Card 5" title="Structure Mode (전개)" iconCls="ti-sitemap" iconBg="background:rgba(255,107,53,0.12);color:#FF6B35" delay={200}>
+            <div style={{ marginTop: '12px' }}>
+              {result.structure_steps.map((s, i) => (
+                <div key={i}>
+                  <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(255,107,53,0.06)', borderLeft: '3px solid rgba(255,107,53,0.5)', margin: '5px 0' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.85)' }}>{s.ko}</div>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,107,53,0.7)', marginTop: '2px', letterSpacing: '0.4px' }}>{s.en}</div>
+                  </div>
+                  {i < result.structure_steps.length - 1 && <div style={{ textAlign: 'center', color: 'rgba(255,107,53,0.4)', fontSize: '18px', margin: '2px 0' }}>↓</div>}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Card 6: Summary */}
+          <Card label="Card 6" title="Skeleton Summary" iconCls="ti-list-check" iconBg="background:rgba(74,222,128,0.1);color:#4ade80" delay={250}>
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {result.skeleton_summary.map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'rgba(255,255,255,0.8)', lineHeight: 1.55, fontWeight: 500 }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', marginTop: '6px', flexShrink: 0 }} />
+                  {s}
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Card 7: Layer */}
+          <Card label="Card 7" title="문제 Layer 분석" iconCls="ti-layers-subtract" iconBg="background:rgba(250,204,21,0.1);color:#facc15" delay={300}>
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {result.questions.map(q => (
+                <div key={q.num} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 15px', borderRadius: '10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', width: '28px' }}>{q.num}</span>
+                  <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, ...Object.fromEntries((LAYER_STYLE[q.layer] || '').split(';').filter(Boolean).map(s => { const [k,v]=s.split(':'); return [k.trim(), v?.trim()] })) }}>🧠 {q.layer}</span>
+                  <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.38)', flex: 1 }}>{q.desc}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* 추가 분석 */}
+          <Card label="추가 분석" title="Detail 심층 분석 (클릭하여 열기)" iconCls="ti-zoom-in" iconBg="background:rgba(125,211,252,0.1);color:#7dd3fc" defaultOpen={false} delay={350}>
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <ExpandItem title="세부 정보 분석" content={result.detail_analysis} />
+              <ExpandItem title="함정 분석" content={result.trap_analysis} />
+              <ExpandItem title="패러프레이징 분석" content={result.paraphrase} />
+              <ExpandItem title="출제 의도 분석" content={result.intent} />
+              <ExpandItem title="문장 구조 분석" content={result.sentence_structure} />
+            </div>
+          </Card>
+
+        </div>
       </div>
-    </div>
+    </>
   )
 }

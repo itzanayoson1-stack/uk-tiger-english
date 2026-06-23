@@ -14,7 +14,7 @@ TOEIC Part 7 지문을 독해 구조 관점에서 분석합니다.
     {"ko": "고득점자 읽기 포인트 2", "en": "Reading Point 2"},
     {"ko": "고득점자 읽기 포인트 3", "en": "Reading Point 3"}
   ],
-  "skeleton_html": "지문 전체 HTML. 주어/동사/목적어/보어는 <span class=\\"sk-red\\">단어</span>로. 문장은 <br>로 구분.",
+  "skeleton_html": "지문 전체를 HTML로 반환. 아래 3단계 강도로 표시:\n1. 강(주어+동사): <span class=\\"sk-strong\\">단어</span>\n2. 중간(목적어+보어): <span class=\\"sk-medium\\">단어</span>\n3. 약(나머지 일반 텍스트): <span class=\\"sk-weak\\">단어</span>\n문장은 <br>로 구분.",
   "structure_steps": [
     {"ko": "구조 단계 1", "en": "Step 1"},
     {"ko": "구조 단계 2", "en": "Step 2"},
@@ -30,11 +30,7 @@ TOEIC Part 7 지문을 독해 구조 관점에서 분석합니다.
   "detail_analysis": "세부 정보 분석 3-4문장",
   "trap_analysis": "함정 분석 2-3문장",
   "paraphrase": "패러프레이징 분석 2-3문장",
-  "intent": "출제 의도 분석 2-3문장",
+  "intent": "출제 의도 2-3문장",
   "sentence_structure": "문장 구조 분석 2-3문장",
-  "diagnosis": {
-    "skeleton": "strong|weak|neutral",
-    "structure": "strong|weak|neutral",
-    "detail": "strong|weak|neutral"
-  }
+  "title": "지문 제목 또는 핵심 주제 (15자 이내)"
 }`

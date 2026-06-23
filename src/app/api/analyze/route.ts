@@ -2,7 +2,9 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { SYSTEM_PROMPT } from '@/lib/prompt'
 import { db } from '@/lib/firebase'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
+
+export const maxDuration = 60
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_DAILY = 3
@@ -62,16 +64,28 @@ export async function POST(req: NextRequest) {
       messages: [{ role: 'user', content: userContent }],
     })
 
-    const rawText = response.content
-      .map((b) => (b.type === 'text' ? b.text : ''))
-      .join('')
-    const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim())
+    const rawText = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+    const clean = rawText.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
 
+    // 사용량 업데이트
     await setDoc(ref, { count: currentCount + 1, uid, date: todayKey() })
+
+    // 히스토리 저장
+    await addDoc(collection(db, 'history'), {
+      uid,
+      date: todayKey(),
+      createdAt: new Date().toISOString(),
+      title: parsed.title || parsed.format || '지문 분석',
+      format: parsed.format || '',
+      purpose_type: parsed.purpose_type || '',
+      skeleton_summary: parsed.skeleton_summary || [],
+    })
 
     return NextResponse.json({ ...parsed, usageCount: currentCount + 1 })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: '분석 중 오류가 발생했습니다.' }, { status: 500 })
+    console.error('분석 오류:', error)
+    const message = error instanceof Error ? error.message : '알 수 없는 오류'
+    return NextResponse.json({ error: `분석 중 오류가 발생했습니다: ${message}` }, { status: 500 })
   }
 }
