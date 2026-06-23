@@ -249,7 +249,7 @@ export default function Home() {
       </main>
 
       {showHistory && user && (
-        <HistoryPanel uid={user.uid} onClose={() => setShowHistory(false)} />
+        <HistoryPanel uid={user.uid} onClose={() => setShowHistory(false)} onRestore={(result) => { setResult(result); setAppState('results'); setShowHistory(false); }} />
       )}
     </div>
   )

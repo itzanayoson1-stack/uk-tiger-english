@@ -10,14 +10,16 @@ interface HistoryItem {
   format: string
   purpose_type: string
   skeleton_summary: string[]
+  fullResult?: Record<string, unknown>
 }
 
 interface Props {
   uid: string
   onClose: () => void
+  onRestore?: (result: Record<string, unknown>) => void
 }
 
-export default function HistoryPanel({ uid, onClose }: Props) {
+export default function HistoryPanel({ uid, onClose, onRestore }: Props) {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -28,7 +30,6 @@ export default function HistoryPanel({ uid, onClose }: Props) {
       .catch(() => setLoading(false))
   }, [uid])
 
-  // 날짜별로 묶기
   const grouped = history.reduce((acc, item) => {
     const date = item.date
     if (!acc[date]) acc[date] = []
@@ -44,6 +45,13 @@ export default function HistoryPanel({ uid, onClose }: Props) {
   const formatTime = (isoStr: string) => {
     const d = new Date(isoStr)
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  }
+
+  const handleItemClick = (item: HistoryItem) => {
+    if (item.fullResult && onRestore) {
+      onRestore(item.fullResult)
+      onClose()
+    }
   }
 
   return (
@@ -70,7 +78,7 @@ export default function HistoryPanel({ uid, onClose }: Props) {
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '18px', fontWeight: 700, color: '#fff' }}>📋 분석 히스토리</div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>날짜별 분석 기록</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>클릭하면 분석 결과를 다시 볼 수 있어요</div>
           </div>
           <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '8px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '8px 12px', fontSize: '13px' }}>
             닫기
@@ -101,31 +109,58 @@ export default function HistoryPanel({ uid, onClose }: Props) {
 
               {/* 해당 날짜 항목들 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {grouped[date].map(item => (
-                  <div key={item.id} style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: '12px',
-                    padding: '14px 16px',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35', background: 'rgba(255,107,53,0.12)', padding: '2px 8px', borderRadius: '6px' }}>
-                        {item.format || '지문'}
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
-                        {formatTime(item.createdAt)}
-                      </span>
-                    </div>
-                    <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
-                      {item.title}
-                    </div>
-                    {item.skeleton_summary?.[0] && (
-                      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
-                        {item.skeleton_summary[0]}
+                {grouped[date].map(item => {
+                  const hasFullResult = !!item.fullResult
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleItemClick(item)}
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${hasFullResult ? 'rgba(255,107,53,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                        borderRadius: '12px',
+                        padding: '14px 16px',
+                        cursor: hasFullResult ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        if (hasFullResult) {
+                          (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,107,53,0.08)'
+                          ;(e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,107,53,0.4)'
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (hasFullResult) {
+                          (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'
+                          ;(e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(255,107,53,0.2)'
+                        }
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35', background: 'rgba(255,107,53,0.12)', padding: '2px 8px', borderRadius: '6px' }}>
+                          {item.format || '지문'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>
+                          {formatTime(item.createdAt)}
+                        </span>
+                        {hasFullResult && (
+                          <span style={{ marginLeft: 'auto', fontSize: '11px', color: 'rgba(255,107,53,0.6)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <i className="ti ti-arrow-right" style={{ fontSize: '13px' }} />
+                            결과 보기
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
+                        {item.title}
+                      </div>
+                      {item.skeleton_summary?.[0] && (
+                        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+                          {item.skeleton_summary[0]}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}

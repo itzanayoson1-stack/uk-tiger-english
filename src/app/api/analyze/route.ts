@@ -16,36 +16,29 @@ function todayKey() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// ✅ 근본적으로 개선된 JSON 파싱 함수
 function safeParseJSON(raw: string): object {
-  // 1단계: 마크다운 코드블록 제거
   let clean = raw
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
     .replace(/```\s*$/i, '')
     .trim()
 
-  // 2단계: 바로 파싱 시도 (정상 케이스)
   try {
     return JSON.parse(clean)
   } catch {
-    // 3단계: skeleton_html 필드의 큰따옴표 문제 수정
-    // skeleton_html 값 안의 HTML 속성 따옴표를 이스케이프 처리
     clean = clean.replace(
       /"skeleton_html"\s*:\s*"([\s\S]*?)(?<!\\)",/,
       (_match, content) => {
         const fixed = content
-          .replace(/\\"/g, "'")      // 이미 이스케이프된 따옴표 → 작은따옴표
-          .replace(/"/g, "'")        // 남은 따옴표 → 작은따옴표
+          .replace(/\\"/g, "'")
+          .replace(/"/g, "'")
         return `"skeleton_html": "${fixed}",`
       }
     )
 
-    // 4단계: 재파싱 시도
     try {
       return JSON.parse(clean)
     } catch {
-      // 5단계: JSON 끝이 잘린 경우 복구
       const firstBrace = clean.indexOf('{')
       const lastBrace = clean.lastIndexOf('}')
       if (firstBrace !== -1 && lastBrace !== -1) {
@@ -53,7 +46,6 @@ function safeParseJSON(raw: string): object {
         try {
           return JSON.parse(trimmed)
         } catch {
-          // 6단계: 불완전한 마지막 필드 제거 후 닫기
           const lastComma = trimmed.lastIndexOf(',')
           if (lastComma !== -1) {
             const recovered = trimmed.substring(0, lastComma) + '}'
@@ -142,6 +134,7 @@ export async function POST(req: NextRequest) {
       usageCount = currentCount + 1
     }
 
+    // ✅ 전체 분석 결과를 Firestore에 저장
     try {
       const p = parsed as Record<string, unknown>
       await addDoc(collection(db, 'history'), {
@@ -152,6 +145,8 @@ export async function POST(req: NextRequest) {
         format: p.format || '',
         purpose_type: p.purpose_type || '',
         skeleton_summary: p.skeleton_summary || [],
+        // 전체 분석 결과 저장 (결과 재조회용)
+        fullResult: p,
       })
     } catch (historyError) {
       console.error('히스토리 저장 실패:', historyError)
