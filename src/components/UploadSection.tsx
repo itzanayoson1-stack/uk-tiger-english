@@ -8,29 +8,61 @@ interface Props {
   usageCount: number
 }
 
+// 이미지를 최대 1200px, 품질 0.7로 압축
+async function compressImage(file: File): Promise<{ base64: string; mediaType: string }> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const MAX = 1200
+      let { width, height } = img
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX }
+        else { width = Math.round(width * MAX / height); height = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+      URL.revokeObjectURL(url)
+      resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' })
+    }
+    img.src = url
+  })
+}
+
 export default function UploadSection({ onAnalyze, isLoading, usageCount }: Props) {
   const [text, setText] = useState('')
   const [fileName, setFileName] = useState<string | null>(null)
   const [fileSize, setFileSize] = useState<string | null>(null)
+  const [compressedSize, setCompressedSize] = useState<string | null>(null)
   const [previewSrc, setPreviewSrc] = useState<string | null>(null)
   const [imageBase64, setImageBase64] = useState<string | null>(null)
   const [imageMediaType, setImageMediaType] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [compressing, setCompressing] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const remaining = Math.max(0, 3 - usageCount)
   const exhausted = remaining === 0
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     setFileName(file.name)
-    setFileSize((file.size / 1024).toFixed(1) + ' KB')
-    setImageMediaType(file.type || 'image/jpeg')
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const src = e.target?.result as string
-      setPreviewSrc(src)
-      setImageBase64(src.split(',')[1])
-    }
-    reader.readAsDataURL(file)
+    setFileSize((file.size / 1024).toFixed(0) + ' KB')
+    setCompressing(true)
+
+    // 미리보기용 원본
+    const url = URL.createObjectURL(file)
+    setPreviewSrc(url)
+
+    // 압축
+    const { base64, mediaType } = await compressImage(file)
+    const compressedBytes = Math.round(base64.length * 0.75)
+    setCompressedSize((compressedBytes / 1024).toFixed(0) + ' KB')
+    setImageBase64(base64)
+    setImageMediaType(mediaType)
+    setCompressing(false)
   }
 
   if (exhausted) return (
@@ -43,7 +75,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount }: Prop
     </div>
   )
 
-  const canAnalyze = !isLoading && (!!text || !!imageBase64)
+  const canAnalyze = !isLoading && !compressing && (!!text || !!imageBase64)
 
   return (
     <div>
@@ -86,10 +118,17 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount }: Prop
           <i className="ti ti-photo" style={{ fontSize: '26px', color: '#FF6B35' }} aria-hidden="true" />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{fileName}</div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>{fileSize}</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
+              원본 {fileSize}
+              {compressing && <span style={{ color: '#FF6B35', marginLeft: '8px' }}>압축 중...</span>}
+              {compressedSize && !compressing && <span style={{ color: '#4ade80', marginLeft: '8px' }}>→ 압축 후 {compressedSize}</span>}
+            </div>
           </div>
-          <button onClick={() => { setFileName(null); setPreviewSrc(null); setImageBase64(null); if (fileRef.current) fileRef.current.value = '' }}
-            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '20px', padding: '4px' }}>
+          <button onClick={() => {
+            setFileName(null); setPreviewSrc(null); setImageBase64(null)
+            setFileSize(null); setCompressedSize(null)
+            if (fileRef.current) fileRef.current.value = ''
+          }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '20px', padding: '4px' }}>
             <i className="ti ti-x" aria-hidden="true" />
           </button>
         </div>
@@ -130,7 +169,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount }: Prop
         }}
       />
 
-      {/* 분석 버튼 — 오렌지색으로 명확하게 */}
+      {/* 분석 버튼 */}
       <button
         onClick={() => onAnalyze(text, imageBase64, imageMediaType)}
         disabled={!canAnalyze}
@@ -151,20 +190,19 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount }: Prop
           alignItems: 'center',
           justifyContent: 'center',
           gap: '10px',
-          letterSpacing: '0.3px',
         }}
       >
         <i className="ti ti-brain" style={{ fontSize: '18px' }} aria-hidden="true" />
-        <span>Analyze Reading Structure</span>
-        <span style={{
-          fontSize: '14px',
-          fontWeight: 600,
-          opacity: 0.85,
-          paddingLeft: '8px',
-          borderLeft: canAnalyze ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.1)',
-        }}>
-          분석하기
-        </span>
+        <span>{compressing ? '이미지 압축 중...' : 'Analyze Reading Structure'}</span>
+        {!compressing && (
+          <span style={{
+            fontSize: '14px', fontWeight: 600, opacity: 0.85,
+            paddingLeft: '8px',
+            borderLeft: canAnalyze ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.1)',
+          }}>
+            분석하기
+          </span>
+        )}
       </button>
     </div>
   )
