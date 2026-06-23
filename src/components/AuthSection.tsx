@@ -14,14 +14,22 @@ export default function AuthSection({ onUserChange }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // 타임아웃 — 5초 안에 Firebase 응답 없으면 강제 해제
+    const timeout = setTimeout(() => {
+      setLoading(false)
+      onUserChange(null, 0)
+    }, 5000)
+
     const unsub = onAuthStateChanged(auth, async (u) => {
+      clearTimeout(timeout)
       setUser(u)
       if (u) {
         try {
           const res = await fetch(`/api/usage?uid=${u.uid}`)
           const data = await res.json()
-          setUsageCount(data.count || 0)
-          onUserChange(u, data.count || 0)
+          const count = data.count || 0
+          setUsageCount(count)
+          onUserChange(u, count)
         } catch {
           onUserChange(u, 0)
         }
@@ -29,24 +37,13 @@ export default function AuthSection({ onUserChange }: Props) {
         onUserChange(null, 0)
       }
       setLoading(false)
-    }, (error) => {
-      // Firebase 오류 발생시에도 로딩 해제
-      console.error('Auth error:', error)
-      onUserChange(null, 0)
-      setLoading(false)
     })
-    
-    // 5초 타임아웃 — Firebase 응답 없을 때 강제 해제
-    const timeout = setTimeout(() => {
-      setLoading(false)
-      onUserChange(null, 0)
-    }, 5000)
 
     return () => {
-      unsub()
       clearTimeout(timeout)
+      unsub()
     }
-  }, [])
+  }, [onUserChange])
 
   const login = async () => {
     try {
@@ -77,20 +74,12 @@ export default function AuthSection({ onUserChange }: Props) {
   )
 
   if (!user) return (
-    <button
-      onClick={login}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '8px 16px',
-        background: '#fff',
-        border: 'none',
-        borderRadius: '10px',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: '#333',
-        cursor: 'pointer',
-      }}
-    >
+    <button onClick={login} style={{
+      display: 'flex', alignItems: 'center', gap: '8px',
+      padding: '8px 16px',
+      background: '#fff', border: 'none', borderRadius: '10px',
+      fontSize: '13px', fontWeight: 600, color: '#333', cursor: 'pointer',
+    }}>
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -105,7 +94,6 @@ export default function AuthSection({ onUserChange }: Props) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      {/* 사용량 */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px',
         padding: '6px 12px',
@@ -124,8 +112,6 @@ export default function AuthSection({ onUserChange }: Props) {
         </div>
         <span style={{ fontSize: '11px', fontWeight: 700, color: '#FF6B35' }}>{remaining}/3</span>
       </div>
-
-      {/* 유저 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {user.photoURL && (
           <img src={user.photoURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />

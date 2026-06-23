@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { User } from 'firebase/auth'
 import AuthSection from '@/components/AuthSection'
 import UploadSection from '@/components/UploadSection'
@@ -19,11 +19,12 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('')
   const [stepIndex, setStepIndex] = useState(0)
 
-  const handleUserChange = (u: User | null, count: number) => {
+  // useCallback으로 안정화 — AuthSection 재렌더링 방지
+  const handleUserChange = useCallback((u: User | null, count: number) => {
     setUser(u)
     setUsageCount(count)
     setAuthReady(true)
-  }
+  }, [])
 
   const handleAnalyze = async (text: string, imageBase64: string | null, imageMediaType: string | null) => {
     if (!user) return
@@ -91,7 +92,7 @@ export default function Home() {
 
       <main style={{ maxWidth: '720px', margin: '0 auto', padding: '48px 24px' }}>
 
-        {/* 인증 로딩 */}
+        {/* 인증 로딩 중 */}
         {!authReady && (
           <div style={{ textAlign: 'center', padding: '80px 0', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
             <div style={{
@@ -132,7 +133,6 @@ export default function Home() {
           <>
             {appState === 'upload' && (
               <>
-                {/* Hero — 폰트 크기 줄여서 두 줄로 */}
                 <div style={{ marginBottom: '40px' }}>
                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', letterSpacing: '2.5px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '14px' }}>
                     TOEIC Part 7 독해 구조 훈련
@@ -144,7 +144,6 @@ export default function Home() {
                     lineHeight: 1.2,
                     letterSpacing: '-1.5px',
                     marginBottom: '16px',
-                    whiteSpace: 'nowrap',
                   }}>
                     글의 구조를 읽어라,<br />
                     단어가 아니라 <span style={{ color: '#FF6B35' }}>Skeleton</span>을.
@@ -159,7 +158,7 @@ export default function Home() {
 
             {appState === 'loading' && (
               <div style={{ textAlign: 'center', padding: '80px 0' }}>
-                <div style={{ fontSize: '64px', display: 'block', marginBottom: '24px' }} className="tiger-bounce">🐯</div>
+                <div style={{ fontSize: '64px', marginBottom: '24px' }} className="tiger-bounce">🐯</div>
                 <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '22px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>분석 중입니다...</div>
                 <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '28px' }}>지문의 구조와 핵심 정보를 추출하고 있어요</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
