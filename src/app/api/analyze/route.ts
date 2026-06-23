@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
         : `다음 TOEIC Part 7 지문을 분석해주세요:\n\n${text}`,
     })
 
+    // ① AI 분석 먼저 실행
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4000,
@@ -66,26 +67,35 @@ export async function POST(req: NextRequest) {
 
     const rawText = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const clean = rawText.replace(/```json|```/g, '').trim()
+
+    // ② JSON 파싱 성공 후에만 횟수 차감
     const parsed = JSON.parse(clean)
 
-    // 사용량 업데이트
+    // ③ 분석 성공 확정 → 사용량 업데이트
     await setDoc(ref, { count: currentCount + 1, uid, date: todayKey() })
 
-    // 히스토리 저장
-    await addDoc(collection(db, 'history'), {
-      uid,
-      date: todayKey(),
-      createdAt: new Date().toISOString(),
-      title: parsed.title || parsed.format || '지문 분석',
-      format: parsed.format || '',
-      purpose_type: parsed.purpose_type || '',
-      skeleton_summary: parsed.skeleton_summary || [],
-    })
+    // ④ 히스토리 저장
+    try {
+      await addDoc(collection(db, 'history'), {
+        uid,
+        date: todayKey(),
+        createdAt: new Date().toISOString(),
+        title: parsed.title || parsed.format || '지문 분석',
+        format: parsed.format || '',
+        purpose_type: parsed.purpose_type || '',
+        skeleton_summary: parsed.skeleton_summary || [],
+      })
+    } catch (historyError) {
+      // 히스토리 저장 실패해도 분석 결과는 반환
+      console.error('히스토리 저장 실패:', historyError)
+    }
 
     return NextResponse.json({ ...parsed, usageCount: currentCount + 1 })
+
   } catch (error) {
     console.error('분석 오류:', error)
     const message = error instanceof Error ? error.message : '알 수 없는 오류'
+    // 오류 시 횟수 차감 없이 에러만 반환
     return NextResponse.json({ error: `분석 중 오류가 발생했습니다: ${message}` }, { status: 500 })
   }
 }
