@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut, User } from 'firebase/auth'
 import { auth, googleProvider } from '@/lib/firebase'
 
+const UNLIMITED_EMAILS = ['itzanayoson1@gmail.com']
+
 interface Props {
   onUserChange: (user: User | null, usageCount: number) => void
-  usageCount?: number  // 외부에서 실시간 업데이트 받기
+  usageCount?: number
 }
 
 export default function AuthSection({ onUserChange, usageCount: externalCount }: Props) {
@@ -14,16 +16,12 @@ export default function AuthSection({ onUserChange, usageCount: externalCount }:
   const [internalCount, setInternalCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // 외부에서 횟수가 오면 우선 사용, 아니면 내부 값 사용
   const usageCount = externalCount !== undefined ? externalCount : internalCount
+  const isUnlimited = user ? UNLIMITED_EMAILS.includes(user.email || '') : false
   const remaining = Math.max(0, 3 - usageCount)
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setLoading(false)
-      onUserChange(null, 0)
-    }, 5000)
-
+    const timeout = setTimeout(() => { setLoading(false); onUserChange(null, 0) }, 5000)
     const unsub = onAuthStateChanged(auth, async (u) => {
       clearTimeout(timeout)
       setUser(u)
@@ -34,56 +32,29 @@ export default function AuthSection({ onUserChange, usageCount: externalCount }:
           const count = data.count || 0
           setInternalCount(count)
           onUserChange(u, count)
-        } catch {
-          onUserChange(u, 0)
-        }
-      } else {
-        onUserChange(null, 0)
-      }
+        } catch { onUserChange(u, 0) }
+      } else { onUserChange(null, 0) }
       setLoading(false)
     })
-
-    return () => {
-      clearTimeout(timeout)
-      unsub()
-    }
+    return () => { clearTimeout(timeout); unsub() }
   }, [onUserChange])
 
   const login = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider)
-    } catch (e) {
-      console.error(e)
-    }
+    try { await signInWithPopup(auth, googleProvider) } catch (e) { console.error(e) }
   }
-
   const logout = async () => {
-    await signOut(auth)
-    setUser(null)
-    setInternalCount(0)
-    onUserChange(null, 0)
+    await signOut(auth); setUser(null); setInternalCount(0); onUserChange(null, 0)
   }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-      <div style={{
-        width: '16px', height: '16px',
-        border: '2px solid rgba(255,255,255,0.15)',
-        borderTop: '2px solid #FF6B35',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
+      <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.15)', borderTop: '2px solid #FF6B35', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
       로딩 중...
     </div>
   )
 
   if (!user) return (
-    <button onClick={login} style={{
-      display: 'flex', alignItems: 'center', gap: '8px',
-      padding: '8px 16px',
-      background: '#fff', border: 'none', borderRadius: '10px',
-      fontSize: '13px', fontWeight: 600, color: '#333', cursor: 'pointer',
-    }}>
+    <button onClick={login} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#fff', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, color: '#333', cursor: 'pointer' }}>
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -96,39 +67,31 @@ export default function AuthSection({ onUserChange, usageCount: externalCount }:
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-      {/* 사용량 — 실시간 업데이트 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '8px',
-        padding: '6px 12px',
-        background: 'rgba(255,107,53,0.12)',
-        border: '1px solid rgba(255,107,53,0.25)',
-        borderRadius: '10px',
-        transition: 'all 0.3s',
-      }}>
-        <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35' }}>오늘 남은 횟수</span>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: i < remaining ? '#FF6B35' : 'rgba(255,255,255,0.15)',
-              transition: 'background 0.3s',
-            }} />
-          ))}
+      {/* 사용량 표시 */}
+      {isUnlimited ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)', borderRadius: '10px' }}>
+          <span style={{ fontSize: '14px' }}>♾️</span>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#4ade80' }}>무제한 이용</span>
         </div>
-        <span style={{ fontSize: '11px', fontWeight: 700, color: '#FF6B35' }}>{remaining}/3</span>
-      </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'rgba(255,107,53,0.12)', border: '1px solid rgba(255,107,53,0.25)', borderRadius: '10px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35' }}>오늘 남은 횟수</span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: i < remaining ? '#FF6B35' : 'rgba(255,255,255,0.15)', transition: 'background 0.3s' }} />
+            ))}
+          </div>
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#FF6B35' }}>{remaining}/3</span>
+        </div>
+      )}
 
+      {/* 유저 정보 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        {user.photoURL && (
-          <img src={user.photoURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />
-        )}
+        {user.photoURL && <img src={user.photoURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />}
         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
           {user.displayName?.split(' ')[0]}님
         </span>
-        <button onClick={logout} style={{
-          fontSize: '12px', color: 'rgba(255,255,255,0.35)',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px',
-        }}>
+        <button onClick={logout} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.35)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
           로그아웃
         </button>
       </div>

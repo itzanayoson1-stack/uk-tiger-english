@@ -32,7 +32,7 @@ export default function Home() {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, imageBase64, imageMediaType, uid: user.uid }),
+        body: JSON.stringify({ text, imageBase64, imageMediaType, uid: user.uid, userEmail: user.email }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '분석에 실패했습니다.')
