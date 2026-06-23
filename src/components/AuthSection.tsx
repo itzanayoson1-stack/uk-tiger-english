@@ -6,15 +6,19 @@ import { auth, googleProvider } from '@/lib/firebase'
 
 interface Props {
   onUserChange: (user: User | null, usageCount: number) => void
+  usageCount?: number  // 외부에서 실시간 업데이트 받기
 }
 
-export default function AuthSection({ onUserChange }: Props) {
+export default function AuthSection({ onUserChange, usageCount: externalCount }: Props) {
   const [user, setUser] = useState<User | null>(null)
-  const [usageCount, setUsageCount] = useState(0)
+  const [internalCount, setInternalCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
+  // 외부에서 횟수가 오면 우선 사용, 아니면 내부 값 사용
+  const usageCount = externalCount !== undefined ? externalCount : internalCount
+  const remaining = Math.max(0, 3 - usageCount)
+
   useEffect(() => {
-    // 타임아웃 — 5초 안에 Firebase 응답 없으면 강제 해제
     const timeout = setTimeout(() => {
       setLoading(false)
       onUserChange(null, 0)
@@ -28,7 +32,7 @@ export default function AuthSection({ onUserChange }: Props) {
           const res = await fetch(`/api/usage?uid=${u.uid}`)
           const data = await res.json()
           const count = data.count || 0
-          setUsageCount(count)
+          setInternalCount(count)
           onUserChange(u, count)
         } catch {
           onUserChange(u, 0)
@@ -56,7 +60,7 @@ export default function AuthSection({ onUserChange }: Props) {
   const logout = async () => {
     await signOut(auth)
     setUser(null)
-    setUsageCount(0)
+    setInternalCount(0)
     onUserChange(null, 0)
   }
 
@@ -90,16 +94,16 @@ export default function AuthSection({ onUserChange }: Props) {
     </button>
   )
 
-  const remaining = Math.max(0, 3 - usageCount)
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      {/* 사용량 — 실시간 업데이트 */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '8px',
         padding: '6px 12px',
         background: 'rgba(255,107,53,0.12)',
         border: '1px solid rgba(255,107,53,0.25)',
         borderRadius: '10px',
+        transition: 'all 0.3s',
       }}>
         <span style={{ fontSize: '11px', fontWeight: 600, color: '#FF6B35' }}>오늘 남은 횟수</span>
         <div style={{ display: 'flex', gap: '4px' }}>
@@ -107,11 +111,13 @@ export default function AuthSection({ onUserChange }: Props) {
             <div key={i} style={{
               width: '8px', height: '8px', borderRadius: '50%',
               background: i < remaining ? '#FF6B35' : 'rgba(255,255,255,0.15)',
+              transition: 'background 0.3s',
             }} />
           ))}
         </div>
         <span style={{ fontSize: '11px', fontWeight: 700, color: '#FF6B35' }}>{remaining}/3</span>
       </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {user.photoURL && (
           <img src={user.photoURL} alt="" style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)' }} />

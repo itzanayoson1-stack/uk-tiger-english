@@ -86,7 +86,7 @@ export default function Home() {
             <span style={{ color: '#FF6B35' }}>Read Structure,</span>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}> Not Words</span>
           </div>
-          <AuthSection onUserChange={handleUserChange} />
+          <AuthSection onUserChange={handleUserChange} usageCount={usageCount} />
         </div>
       </header>
 
