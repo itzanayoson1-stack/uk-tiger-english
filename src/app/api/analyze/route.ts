@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Google 로그인이 필요합니다.' }, { status: 401 })
     }
 
-    // 서버에서 사용량 확인
     const ref = doc(db, 'usage', `${uid}_${todayKey()}`)
     const snap = await getDoc(ref)
     const currentCount = snap.exists() ? (snap.data().count as number) : 0
@@ -36,14 +35,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '지문을 입력하거나 이미지를 업로드해주세요.' }, { status: 400 })
     }
 
-    type ContentBlock =
-      | { type: 'text'; text: string }
-      | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+    const userContent: Anthropic.MessageParam['content'] = []
 
-    const userContent: ContentBlock[] = []
     if (imageBase64) {
-      userContent.push({ type: 'image', source: { type: 'base64', media_type: imageMediaType || 'image/jpeg', data: imageBase64 } })
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: (imageMediaType || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+          data: imageBase64,
+        },
+      })
     }
+
     userContent.push({
       type: 'text',
       text: imageBase64
@@ -58,10 +62,11 @@ export async function POST(req: NextRequest) {
       messages: [{ role: 'user', content: userContent }],
     })
 
-    const rawText = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('')
+    const rawText = response.content
+      .map((b) => (b.type === 'text' ? b.text : ''))
+      .join('')
     const parsed = JSON.parse(rawText.replace(/```json|```/g, '').trim())
 
-    // 분석 성공 후 사용량 증가
     await setDoc(ref, { count: currentCount + 1, uid, date: todayKey() })
 
     return NextResponse.json({ ...parsed, usageCount: currentCount + 1 })
