@@ -63,11 +63,11 @@ export default function Home() {
             <span style={{ color: '#FF6B35' }}>Read Structure,</span>
             <span style={{ color: 'rgba(255,255,255,0.5)' }}> Not Words</span>
           </div>
-          {/* 히스토리 버튼 */}
+          {/* 기록 버튼 */}
           {user && (
             <button onClick={() => setShowHistory(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
-              <i className="ti ti-history" style={{ fontSize: '15px' }} aria-hidden="true" />
-              히스토리
+              <i className="ti ti-clock-hour-3" style={{ fontSize: '15px' }} aria-hidden="true" />
+              기록
             </button>
           )}
           <AuthSection onUserChange={handleUserChange} usageCount={usageCount} />
@@ -147,7 +147,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* 히스토리 패널 */}
+      {/* 기록 패널 */}
       {showHistory && user && (
         <HistoryPanel uid={user.uid} onClose={() => setShowHistory(false)} />
       )}
