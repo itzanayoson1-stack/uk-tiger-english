@@ -61,11 +61,12 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
   const [images, setImages] = useState<ImageItem[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
   const [compressing, setCompressing] = useState(false)
+  // ── 핵심 변경: 수동 토글로 다중 지문 모드 결정 ──
+  const [isMultiPassage, setIsMultiPassage] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const remaining = Math.max(0, 3 - usageCount)
   const exhausted = !isUnlimited && remaining === 0
-  const isMultiPassage = images.length >= 2
   const canAddMore = images.length < MAX_IMAGES
 
   const handleFiles = async (files: FileList | File[]) => {
@@ -73,7 +74,6 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
     const slots = MAX_IMAGES - images.length
     const toProcess = fileArr.slice(0, slots)
     if (toProcess.length === 0) return
-
     setCompressing(true)
     const results = await Promise.all(toProcess.map(compressImage))
     setImages(prev => [...prev, ...results])
@@ -107,6 +107,62 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
 
   return (
     <div>
+
+      {/* ━━━━ 지문 모드 토글 (최상단) ━━━━ */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '18px' }}>
+        <button
+          onClick={() => setIsMultiPassage(false)}
+          style={{
+            flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: '13px', fontWeight: 700,
+            transition: 'all 0.2s',
+            background: !isMultiPassage ? '#FF6B35' : 'rgba(255,255,255,0.06)',
+            color: !isMultiPassage ? '#fff' : 'rgba(255,255,255,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+          }}
+        >
+          <i className="ti ti-file-text" style={{ fontSize: '15px' }} />
+          단일 지문
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>Single</span>
+        </button>
+        <button
+          onClick={() => setIsMultiPassage(true)}
+          style={{
+            flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+            fontFamily: "'Space Grotesk', sans-serif", fontSize: '13px', fontWeight: 700,
+            transition: 'all 0.2s',
+            background: isMultiPassage ? 'linear-gradient(135deg, #16a34a, #15803d)' : 'rgba(255,255,255,0.06)',
+            color: isMultiPassage ? '#fff' : 'rgba(255,255,255,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+          }}
+        >
+          <i className="ti ti-files" style={{ fontSize: '15px' }} />
+          다중 지문
+          <span style={{ fontSize: '11px', opacity: 0.8 }}>Double / Triple</span>
+        </button>
+      </div>
+
+      {/* 모드 안내 메시지 */}
+      <div style={{
+        padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', fontSize: '12px', lineHeight: 1.6,
+        background: isMultiPassage ? 'rgba(74,222,128,0.08)' : 'rgba(255,107,53,0.06)',
+        border: `1px solid ${isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,107,53,0.15)'}`,
+        color: isMultiPassage ? 'rgba(74,222,128,0.8)' : 'rgba(255,107,53,0.7)',
+      }}>
+        {isMultiPassage ? (
+          <>
+            <i className="ti ti-link" style={{ marginRight: '6px' }} />
+            <strong>다중 지문 모드:</strong> 한 장에 두 지문이 모두 찍혀 있어도 OK!
+            사진 1~3장을 올리면 지문 간 관계와 Cross-reference 포인트를 분석해드립니다.
+          </>
+        ) : (
+          <>
+            <i className="ti ti-file-text" style={{ marginRight: '6px' }} />
+            <strong>단일 지문 모드:</strong> Part 7 단일 지문(151~175번) 사진 또는 텍스트를 입력하세요.
+          </>
+        )}
+      </div>
+
       {/* ── 업로드 영역 ── */}
       <div
         onClick={() => canAddMore && fileRef.current?.click()}
@@ -117,10 +173,10 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
           if (canAddMore) handleFiles(e.dataTransfer.files)
         }}
         style={{
-          border: `2px dashed ${isDragOver ? '#FF6B35' : isMultiPassage ? 'rgba(74,222,128,0.5)' : 'rgba(255,107,53,0.35)'}`,
-          borderRadius: '16px', padding: '40px 24px', textAlign: 'center',
+          border: `2px dashed ${isDragOver ? '#FF6B35' : isMultiPassage ? 'rgba(74,222,128,0.45)' : 'rgba(255,107,53,0.35)'}`,
+          borderRadius: '16px', padding: '36px 24px', textAlign: 'center',
           cursor: canAddMore ? 'pointer' : 'default',
-          background: isDragOver ? 'rgba(255,107,53,0.08)' : isMultiPassage ? 'rgba(74,222,128,0.04)' : 'rgba(255,255,255,0.03)',
+          background: isDragOver ? 'rgba(255,107,53,0.08)' : isMultiPassage ? 'rgba(74,222,128,0.03)' : 'rgba(255,255,255,0.03)',
           transition: 'all 0.2s',
         }}
       >
@@ -128,41 +184,33 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
           <i className={`ti ${isMultiPassage ? 'ti-files' : 'ti-file-text'}`} aria-hidden="true" />
         </div>
 
-        {/* 다중 지문 모드 배지 */}
-        {isMultiPassage && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.4)', borderRadius: '20px', padding: '4px 14px', marginBottom: '10px', fontSize: '12px', fontWeight: 700, color: '#4ade80', letterSpacing: '0.5px' }}>
-            <i className="ti ti-link" style={{ fontSize: '13px' }} />
-            다중 지문 모드 (Double/Triple Passage)
-          </div>
-        )}
-
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '17px', fontWeight: 700, color: '#fff', marginBottom: '5px' }}>
           {images.length === 0
-            ? 'Part 7 지문과 문제를 올리세요'
+            ? (isMultiPassage ? '다중 지문 사진을 올리세요' : 'Part 7 지문 사진을 올리세요')
             : canAddMore
-              ? `지문 추가 (${images.length}/${MAX_IMAGES}장)`
+              ? `사진 추가 (${images.length}/${MAX_IMAGES}장)`
               : `최대 ${MAX_IMAGES}장 업로드됨`}
         </div>
-        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)', marginBottom: '14px' }}>
-          {images.length === 0
-            ? '단일 지문 1장 또는 다중 지문 2~3장 업로드'
-            : canAddMore
-              ? '사진을 추가하려면 클릭 또는 드래그'
-              : '더 이상 추가할 수 없습니다'}
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', marginBottom: '14px' }}>
+          {isMultiPassage
+            ? '한 장에 두 지문이 함께 찍혀 있어도 분석 가능 · 최대 3장'
+            : '지문 + 문제가 담긴 사진을 드래그하거나 클릭해서 업로드'}
         </div>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
           {['JPG', 'PNG'].map(e => (
             <span key={e} style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '11px', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{e}</span>
           ))}
-          <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '11px', border: '1px solid rgba(74,222,128,0.3)', color: 'rgba(74,222,128,0.6)', fontWeight: 600 }}>최대 3장</span>
+          {isMultiPassage && (
+            <span style={{ padding: '3px 12px', borderRadius: '20px', fontSize: '11px', border: '1px solid rgba(74,222,128,0.3)', color: 'rgba(74,222,128,0.6)', fontWeight: 600 }}>최대 3장</span>
+          )}
         </div>
 
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          multiple
+          multiple={isMultiPassage}
           style={{ display: 'none' }}
           onChange={(e) => e.target.files && handleFiles(e.target.files)}
         />
@@ -173,7 +221,6 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
         <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {images.map((img, index) => (
             <div key={index} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '12px', overflow: 'hidden' }}>
-              {/* 이미지 정보 행 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,107,53,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: isMultiPassage ? '#4ade80' : '#FF6B35', flexShrink: 0 }}>
                   {index + 1}
@@ -193,7 +240,6 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
                   <i className="ti ti-x" aria-hidden="true" />
                 </button>
               </div>
-              {/* 미리보기 */}
               <img
                 src={img.previewSrc}
                 alt={`지문 ${index + 1}`}
@@ -202,7 +248,6 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
             </div>
           ))}
 
-          {/* 압축 중 표시 */}
           {compressing && (
             <div style={{ textAlign: 'center', padding: '12px', color: '#FF6B35', fontSize: '13px' }}>
               <i className="ti ti-loader" style={{ marginRight: '6px' }} />이미지 압축 중...
@@ -232,7 +277,9 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
         disabled={!canAnalyze}
         style={{
           width: '100%', marginTop: '16px', padding: '18px',
-          background: canAnalyze ? (isMultiPassage ? 'linear-gradient(135deg, #FF6B35, #4ade80)' : '#FF6B35') : 'rgba(255,255,255,0.08)',
+          background: canAnalyze
+            ? (isMultiPassage ? 'linear-gradient(135deg, #16a34a, #15803d)' : '#FF6B35')
+            : 'rgba(255,255,255,0.08)',
           border: canAnalyze ? 'none' : '1px solid rgba(255,255,255,0.1)',
           borderRadius: '14px',
           color: canAnalyze ? '#fff' : 'rgba(255,255,255,0.25)',
@@ -253,14 +300,6 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
         )}
       </button>
 
-      {/* 다중 지문 안내 */}
-      {isMultiPassage && (
-        <div style={{ marginTop: '12px', padding: '12px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: '12px', fontSize: '12px', color: 'rgba(74,222,128,0.8)', lineHeight: 1.6 }}>
-          <i className="ti ti-info-circle" style={{ marginRight: '6px' }} />
-          <strong>다중 지문 모드:</strong> {images.length}개의 지문을 분석합니다.
-          지문 간 Cross-reference 포인트와 고득점 전략을 함께 제공합니다.
-        </div>
-      )}
     </div>
   )
 }
