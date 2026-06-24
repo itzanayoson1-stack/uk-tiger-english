@@ -5,7 +5,16 @@ import { SYSTEM_PROMPT, MULTI_PASSAGE_PROMPT } from '@/lib/prompt'
 import { db } from '@/lib/firebase'
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 
-export const maxDuration = 60
+export const maxDuration = 300  // Vercel Pro: 최대 300초 (다중 지문 대응)
+
+// Next.js body 크기 제한 해제 (이미지 여러 장 대응)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+}
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_DAILY = 3
@@ -217,6 +226,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('분석 오류:', error)
     const message = error instanceof Error ? error.message : '알 수 없는 오류'
-    return NextResponse.json({ error: `분석 중 오류가 발생했습니다: ${message}` }, { status: 500 })
+    // 반드시 JSON으로 반환 (텍스트 에러 방지)
+    return new NextResponse(
+      JSON.stringify({ error: `분석 중 오류가 발생했습니다: ${message}` }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 }

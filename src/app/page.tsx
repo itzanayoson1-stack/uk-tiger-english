@@ -75,13 +75,24 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          images,           // 배열로 전달
-          isMultiPassage,   // 다중 지문 플래그
+          images,
+          isMultiPassage,
           uid: user.uid,
           userEmail: user.email,
         }),
       })
-      const data = await res.json()
+      // 서버가 JSON이 아닌 응답(타임아웃, 502 등)을 보낼 때 방어
+      const rawText = await res.text()
+      let data: any
+      try {
+        data = JSON.parse(rawText)
+      } catch {
+        throw new Error(
+          res.status === 504 || res.status === 408
+            ? '분석 시간이 초과되었습니다. 이미지를 더 작게 찍거나 다시 시도해 주세요.'
+            : `서버 오류가 발생했습니다. (${res.status})`
+        )
+      }
       if (!res.ok) throw new Error(data.error || '분석에 실패했습니다.')
       clearInterval(timer)
       setStepIndex(STEPS.length)
