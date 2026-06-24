@@ -1,7 +1,7 @@
 // src/app/api/analyze/route.ts
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { SYSTEM_PROMPT } from '@/lib/prompt'
+import { SYSTEM_PROMPT, MULTI_PASSAGE_PROMPT } from '@/lib/prompt'
 import { db } from '@/lib/firebase'
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 
@@ -61,7 +61,16 @@ function safeParseJSON(raw: string): object {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { text, imageBase64, imageMediaType, uid, userEmail } = body
+    const {
+      text,
+      imageBase64,
+      imageMediaType,
+      // 다중 이미지 지원 (새로 추가)
+      images,          // { base64: string, mediaType: string }[]
+      isMultiPassage,  // 프론트에서 명시적으로 넘김
+      uid,
+      userEmail,
+    } = body
 
     if (!uid) {
       return NextResponse.json({ error: 'Google 로그인이 필요합니다.' }, { status: 401 })
@@ -81,34 +90,79 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!text && !imageBase64) {
+    // ── 이미지 목록 통합 ──────────────────────────────
+    // 기존 단일 imageBase64 + 새로운 images[] 배열 모두 지원
+    type ImageItem = { base64: string; mediaType: string }
+    const allImages: ImageItem[] = []
+
+    if (images && Array.isArray(images) && images.length > 0) {
+      allImages.push(...images)
+    } else if (imageBase64) {
+      allImages.push({
+        base64: imageBase64,
+        mediaType: imageMediaType || 'image/jpeg',
+      })
+    }
+
+    if (!text && allImages.length === 0) {
       return NextResponse.json({ error: '지문을 입력하거나 이미지를 업로드해주세요.' }, { status: 400 })
     }
 
+    // ── 다중 지문 자동 감지 ───────────────────────────
+    const multiPassageKeywords = [
+      '[지문2]', '[지문3]', '[passage 2]', '[passage 3]',
+    ]
+    const textHasMultiMarker = text
+      ? multiPassageKeywords.some(k => text.toLowerCase().includes(k.toLowerCase()))
+      : false
+
+    const detectedMultiPassage =
+      isMultiPassage === true ||
+      allImages.length >= 2 ||
+      textHasMultiMarker
+
+    const systemPrompt = detectedMultiPassage ? MULTI_PASSAGE_PROMPT : SYSTEM_PROMPT
+
+    // ── Claude API 메시지 구성 ────────────────────────
     const userContent: Anthropic.MessageParam['content'] = []
 
-    if (imageBase64) {
+    // 이미지를 모두 추가 (순서: 이미지1 → 이미지2 → ... → 텍스트)
+    for (const img of allImages) {
       userContent.push({
         type: 'image',
         source: {
           type: 'base64',
-          media_type: (imageMediaType || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-          data: imageBase64,
+          media_type: img.mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+          data: img.base64,
         },
       })
     }
 
-    userContent.push({
-      type: 'text',
-      text: imageBase64
-        ? (text ? `이미지 지문과 텍스트를 함께 분석해주세요:\n\n${text}` : '이 이미지의 TOEIC Part 7 지문을 분석해주세요.')
-        : `다음 TOEIC Part 7 지문을 분석해주세요:\n\n${text}`,
-    })
+    // 텍스트 지시문
+    if (detectedMultiPassage) {
+      userContent.push({
+        type: 'text',
+        text: allImages.length > 0
+          ? (text
+              ? `이미지의 TOEIC Part 7 다중 지문(Double/Triple Passage)과 아래 텍스트를 함께 분석해주세요.\n\n${text}`
+              : `이미지의 TOEIC Part 7 다중 지문(Double/Triple Passage)을 분석해주세요.\n이미지가 ${allImages.length}장 있습니다. 각 이미지에서 지문을 추출하고, 지문 간의 관계(Cross-reference 포인트 포함)를 분석해주세요.`)
+          : `다음 TOEIC Part 7 다중 지문을 분석해주세요:\n\n${text}`,
+      })
+    } else {
+      userContent.push({
+        type: 'text',
+        text: allImages.length > 0
+          ? (text
+              ? `이미지 지문과 텍스트를 함께 분석해주세요:\n\n${text}`
+              : '이 이미지의 TOEIC Part 7 지문을 분석해주세요.')
+          : `다음 TOEIC Part 7 지문을 분석해주세요:\n\n${text}`,
+      })
+    }
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userContent }],
     })
 
@@ -134,7 +188,7 @@ export async function POST(req: NextRequest) {
       usageCount = currentCount + 1
     }
 
-    // ✅ 전체 분석 결과를 Firestore에 저장
+    // ✅ Firestore 히스토리 저장
     try {
       const p = parsed as Record<string, unknown>
       await addDoc(collection(db, 'history'), {
@@ -142,10 +196,11 @@ export async function POST(req: NextRequest) {
         date: todayKey(),
         createdAt: new Date().toISOString(),
         title: p.title || p.format || '지문 분석',
-        format: p.format || '',
+        format: p.format || (detectedMultiPassage ? p.passage_type : ''),
         purpose_type: p.purpose_type || '',
         skeleton_summary: p.skeleton_summary || [],
-        // 전체 분석 결과 저장 (결과 재조회용)
+        isMultiPassage: detectedMultiPassage,
+        passageCount: detectedMultiPassage ? (p.passage_count || allImages.length) : 1,
         fullResult: p,
       })
     } catch (historyError) {
@@ -156,6 +211,7 @@ export async function POST(req: NextRequest) {
       ...(parsed as Record<string, unknown>),
       usageCount,
       isUnlimited,
+      isMultiPassage: detectedMultiPassage,
     })
 
   } catch (error) {

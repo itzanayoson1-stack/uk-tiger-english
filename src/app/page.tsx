@@ -9,7 +9,11 @@ import HistoryPanel from '@/components/HistoryPanel'
 import { PART5_QUESTIONS, Part5Question } from '@/lib/part5Questions'
 
 type AppState = 'upload' | 'loading' | 'results' | 'error'
-const STEPS = ['OCR 인식', 'Skeleton 추출', 'Structure 분석', 'Layer 분석', '결과 생성']
+
+// 단일 / 다중 지문 전용 로딩 스텝
+const STEPS_SINGLE = ['OCR 인식', 'Skeleton 추출', 'Structure 분석', 'Layer 분석', '결과 생성']
+const STEPS_MULTI  = ['지문 인식', '지문 간 관계 분석', 'Cross-reference 추출', 'Layer 분석', '결과 생성']
+
 const UNLIMITED_EMAILS = ['itzanayoson1@gmail.com']
 
 export default function Home() {
@@ -21,6 +25,7 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState('')
   const [stepIndex, setStepIndex] = useState(0)
   const [showHistory, setShowHistory] = useState(false)
+  const [isMultiPassageMode, setIsMultiPassageMode] = useState(false)
 
   // Part 5 퀴즈 상태
   const [quizQuestion, setQuizQuestion] = useState<Part5Question | null>(null)
@@ -49,15 +54,32 @@ export default function Home() {
     setShowResult(true)
   }
 
-  const handleAnalyze = async (text: string, imageBase64: string | null, imageMediaType: string | null) => {
+  // ── 핵심 변경: 시그니처 업데이트 ──────────────
+  const handleAnalyze = async (
+    text: string,
+    images: { base64: string; mediaType: string }[],
+    isMultiPassage: boolean
+  ) => {
     if (!user) return
-    setAppState('loading'); setStepIndex(0); setErrorMsg('')
+    setAppState('loading')
+    setStepIndex(0)
+    setErrorMsg('')
+    setIsMultiPassageMode(isMultiPassage)
+
+    const STEPS = isMultiPassage ? STEPS_MULTI : STEPS_SINGLE
     const timer = setInterval(() => setStepIndex(p => p < STEPS.length - 1 ? p + 1 : p), 800)
+
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, imageBase64, imageMediaType, uid: user.uid, userEmail: user.email }),
+        body: JSON.stringify({
+          text,
+          images,           // 배열로 전달
+          isMultiPassage,   // 다중 지문 플래그
+          uid: user.uid,
+          userEmail: user.email,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || '분석에 실패했습니다.')
@@ -75,6 +97,9 @@ export default function Home() {
 
   const handleReset = () => { setAppState('upload'); setResult(null); setStepIndex(0) }
   const goHome = () => { setAppState('upload'); setResult(null); setStepIndex(0); setErrorMsg('') }
+
+  // 현재 모드에 맞는 스텝 배열
+  const CURRENT_STEPS = isMultiPassageMode ? STEPS_MULTI : STEPS_SINGLE
 
   return (
     <div className="min-h-screen" style={{ background: '#0A1628', color: '#fff' }}>
@@ -157,10 +182,16 @@ export default function Home() {
                 {/* 상단 분석 진행 상태 */}
                 <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                   <div style={{ fontSize: '56px', marginBottom: '16px' }} className="tiger-bounce">🐯</div>
-                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>분석 중입니다...</div>
-                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '20px' }}>지문의 구조와 핵심 정보를 추출하고 있어요</div>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '20px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+                    {isMultiPassageMode ? '다중 지문 분석 중...' : '분석 중입니다...'}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '20px' }}>
+                    {isMultiPassageMode
+                      ? '지문 간 관계와 Cross-reference 포인트를 분석하고 있어요'
+                      : '지문의 구조와 핵심 정보를 추출하고 있어요'}
+                  </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px' }}>
-                    {STEPS.map((step, i) => (
+                    {CURRENT_STEPS.map((step, i) => (
                       <div key={step} style={{ padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 500, background: i < stepIndex ? 'rgba(74,222,128,0.1)' : i === stepIndex ? 'rgba(255,107,53,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${i < stepIndex ? 'rgba(74,222,128,0.3)' : i === stepIndex ? 'rgba(255,107,53,0.4)' : 'rgba(255,255,255,0.1)'}`, color: i < stepIndex ? '#4ade80' : i === stepIndex ? '#FF6B35' : 'rgba(255,255,255,0.25)', transition: 'all 0.3s' }}>
                         {i < stepIndex ? '✓ ' : ''}{step}
                       </div>
@@ -171,18 +202,15 @@ export default function Home() {
                 {/* Part 5 퀴즈 */}
                 {quizQuestion && (
                   <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,107,53,0.25)', borderRadius: '20px', padding: '28px 24px' }}>
-                    {/* 퀴즈 헤더 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                       <span style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)', borderRadius: '8px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, color: '#FF6B35', letterSpacing: '1px' }}>PART 5</span>
                       <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>분석 대기 시간에 풀어보세요!</span>
                     </div>
 
-                    {/* 문제 */}
                     <p style={{ fontSize: '15px', lineHeight: 1.75, color: '#fff', marginBottom: '20px', fontFamily: "'Inter', sans-serif" }}>
                       {quizQuestion.sentence}
                     </p>
 
-                    {/* 보기 */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {(['A', 'B', 'C', 'D'] as const).map((choice) => {
                         const isCorrect = choice === quizQuestion.answer
@@ -214,7 +242,6 @@ export default function Home() {
                       })}
                     </div>
 
-                    {/* 정답 해설 */}
                     {showResult && (
                       <div style={{ marginTop: '18px', padding: '14px 18px', background: 'rgba(255,255,255,0.04)', borderRadius: '12px', borderLeft: '3px solid #FF6B35' }}>
                         <div style={{ fontSize: '13px', fontWeight: 700, color: selectedAnswer === quizQuestion.answer ? '#4ade80' : '#f87171', marginBottom: '6px' }}>
