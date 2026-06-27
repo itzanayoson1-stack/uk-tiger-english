@@ -116,7 +116,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
             flex: 1, padding: '12px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
             fontFamily: "'Space Grotesk', sans-serif", fontSize: '13px', fontWeight: 700,
             transition: 'all 0.2s',
-            background: !isMultiPassage ? '#FF6B35' : 'rgba(255,255,255,0.06)',
+            background: !isMultiPassage ? '#F94216' : 'rgba(255,255,255,0.06)',
             color: !isMultiPassage ? '#fff' : 'rgba(255,255,255,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
           }}
@@ -145,9 +145,9 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
       {/* 모드 안내 메시지 */}
       <div style={{
         padding: '10px 14px', borderRadius: '10px', marginBottom: '16px', fontSize: '12px', lineHeight: 1.6,
-        background: isMultiPassage ? 'rgba(74,222,128,0.08)' : 'rgba(255,107,53,0.06)',
-        border: `1px solid ${isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,107,53,0.15)'}`,
-        color: isMultiPassage ? 'rgba(74,222,128,0.8)' : 'rgba(255,107,53,0.7)',
+        background: isMultiPassage ? 'rgba(74,222,128,0.08)' : 'rgba(249,66,22,0.06)',
+        border: `1px solid ${isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(249,66,22,0.15)'}`,
+        color: isMultiPassage ? 'rgba(74,222,128,0.8)' : 'rgba(249,66,22,0.7)',
       }}>
         {isMultiPassage ? (
           <>
@@ -173,14 +173,14 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
           if (canAddMore) handleFiles(e.dataTransfer.files)
         }}
         style={{
-          border: `2px dashed ${isDragOver ? '#FF6B35' : isMultiPassage ? 'rgba(74,222,128,0.45)' : 'rgba(255,107,53,0.35)'}`,
+          border: `2px dashed ${isDragOver ? '#F94216' : isMultiPassage ? 'rgba(74,222,128,0.45)' : 'rgba(249,66,22,0.35)'}`,
           borderRadius: '16px', padding: '36px 24px', textAlign: 'center',
           cursor: canAddMore ? 'pointer' : 'default',
-          background: isDragOver ? 'rgba(255,107,53,0.08)' : isMultiPassage ? 'rgba(74,222,128,0.03)' : 'rgba(255,255,255,0.03)',
+          background: isDragOver ? 'rgba(249,66,22,0.08)' : isMultiPassage ? 'rgba(74,222,128,0.03)' : 'rgba(255,255,255,0.03)',
           transition: 'all 0.2s',
         }}
       >
-        <div style={{ fontSize: '36px', color: isMultiPassage ? '#4ade80' : isDragOver ? '#FF6B35' : 'rgba(255,107,53,0.4)', marginBottom: '10px' }}>
+        <div style={{ fontSize: '36px', color: isMultiPassage ? '#4ade80' : isDragOver ? '#F94216' : 'rgba(249,66,22,0.4)', marginBottom: '10px' }}>
           <i className={`ti ${isMultiPassage ? 'ti-files' : 'ti-file-text'}`} aria-hidden="true" />
         </div>
 
@@ -222,7 +222,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
           {images.map((img, index) => (
             <div key={index} style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.1)'}`, borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(255,107,53,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: isMultiPassage ? '#4ade80' : '#FF6B35', flexShrink: 0 }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: isMultiPassage ? 'rgba(74,222,128,0.2)' : 'rgba(249,66,22,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: isMultiPassage ? '#4ade80' : '#F94216', flexShrink: 0 }}>
                   {index + 1}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -249,7 +249,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
           ))}
 
           {compressing && (
-            <div style={{ textAlign: 'center', padding: '12px', color: '#FF6B35', fontSize: '13px' }}>
+            <div style={{ textAlign: 'center', padding: '12px', color: '#F94216', fontSize: '13px' }}>
               <i className="ti ti-loader" style={{ marginRight: '6px' }} />이미지 압축 중...
             </div>
           )}
@@ -278,7 +278,7 @@ export default function UploadSection({ onAnalyze, isLoading, usageCount, isUnli
         style={{
           width: '100%', marginTop: '16px', padding: '18px',
           background: canAnalyze
-            ? (isMultiPassage ? 'linear-gradient(135deg, #16a34a, #15803d)' : '#FF6B35')
+            ? (isMultiPassage ? 'linear-gradient(135deg, #16a34a, #15803d)' : '#F94216')
             : 'rgba(255,255,255,0.08)',
           border: canAnalyze ? 'none' : '1px solid rgba(255,255,255,0.1)',
           borderRadius: '14px',
