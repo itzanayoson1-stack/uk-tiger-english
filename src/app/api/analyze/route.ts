@@ -5,16 +5,10 @@ import { SYSTEM_PROMPT, MULTI_PASSAGE_PROMPT } from '@/lib/prompt'
 import { db } from '@/lib/firebase'
 import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore'
 
-export const maxDuration = 300  // Vercel Pro: 최대 300초 (다중 지문 대응)
+export const maxDuration = 60  // Vercel 무료 플랜 최대값
 
-// Next.js body 크기 제한 해제 (이미지 여러 장 대응)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-}
+// App Router 방식 body 크기 제한 (이미지 여러 장 대응)
+export const fetchCache = 'force-no-store'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const MAX_DAILY = 3
